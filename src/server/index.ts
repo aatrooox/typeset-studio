@@ -1,0 +1,87 @@
+import { existsSync, mkdirSync } from "fs";
+import { join } from "path";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { serveStatic } from "hono/bun";
+import { authMiddleware, getOrGenerateAdminKey } from "./auth";
+import { renderRouter } from "./routes/render";
+import { templatesRouter } from "./routes/templates";
+import { uploadRouter } from "./routes/upload";
+
+const app = new Hono();
+
+app.use("*", cors());
+
+// Health check (public)
+app.get("/api/health", (c) => {
+  return c.json({
+    status: "ok",
+    name: "Typeset Studio Server",
+    version: "0.1.0",
+    time: new Date().toISOString(),
+  });
+});
+
+// Verify auth key (public check)
+app.post("/api/auth/verify", async (c) => {
+  const body = await c.req.json<{ key?: string }>();
+  const adminKey = getOrGenerateAdminKey();
+  const isValid = body.key === adminKey;
+  return c.json({ ok: isValid });
+});
+
+// Protected API routes
+app.use("/api/templates/*", authMiddleware);
+app.use("/api/upload/*", authMiddleware);
+app.use("/api/render/*", authMiddleware);
+
+app.route("/api/templates", templatesRouter);
+app.route("/api/upload", uploadRouter);
+app.route("/api/render", renderRouter);
+
+// Static uploads serving
+const UPLOAD_DIR = join(process.cwd(), "data", "uploads");
+if (!existsSync(UPLOAD_DIR)) {
+  mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+app.use("/uploads/*", serveStatic({ root: "./data" }));
+
+// Production: serve built static files from dist/
+const DIST_DIR = join(process.cwd(), "dist");
+if (existsSync(DIST_DIR)) {
+  app.use("/*", serveStatic({ root: "./dist" }));
+  app.get("/*", serveStatic({ path: "./dist/index.html" }));
+} else {
+  app.get("/", (c) => {
+    return c.html(`
+      <!doctype html>
+      <html>
+        <head><title>Typeset Studio</title></head>
+        <body style="background:#0a0a0a;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+          <div style="text-align:center;">
+            <h2>Typeset Studio Server is running!</h2>
+            <p style="color:#888;">Web assets are compiling. Run <code>bun run build</code> to produce production assets, or run <code>bun run dev</code> for Vite HMR.</p>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+}
+
+const PORT = Number(process.env.PORT || 4890);
+const adminKey = getOrGenerateAdminKey();
+
+console.log(`
+┌────────────────────────────────────────────────────────┐
+│               ⚡ Typeset Studio Server                 │
+├────────────────────────────────────────────────────────┤
+│  Web URL:    http://localhost:${PORT}                   │
+│  Admin Key:  ${adminKey}                      │
+│  Protected:  X-Admin-Key header required               │
+└────────────────────────────────────────────────────────┘
+`);
+
+export default {
+  port: PORT,
+  fetch: app.fetch,
+};

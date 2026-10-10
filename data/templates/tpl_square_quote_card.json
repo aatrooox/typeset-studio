@@ -1,0 +1,34 @@
+{
+  "name": "金句留白方版 (1:1)",
+  "aspectRatio": "square-1-1",
+  "algorithm": {
+    "baseFontSize": 48,
+    "scaleRatio": 1.25,
+    "lineHeightMultiplier": 1.45,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.8,
+    "contentBottomGap": 20,
+    "safeArea": {
+      "top": 100,
+      "right": 100,
+      "bottom": 100,
+      "left": 100
+    }
+  },
+  "theme": {
+    "bgColor": "#18181b",
+    "textColor": "#ffffff",
+    "accentColor": "#f59e0b",
+    "quoteColor": "#d4d4d8",
+    "captionColor": "#a1a1aa",
+    "watermarkColor": "#71717a",
+    "cardBg": "#27272a"
+  },
+  "typography": {
+    "headingFont": "AlimamaShuHeiTi",
+    "bodyFont": "LXGWNeoZhiSongPlus"
+  },
+  "footerText": "Typeset Studio · 纯算法排版",
+  "watermarkText": "@Antigravity",
+  "id": "tpl_square_quote_card"
+}
