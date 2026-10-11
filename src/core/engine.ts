@@ -109,7 +109,7 @@ export function runTypeset(params: {
         text: b.text,
         runs: parseInlineRuns(b.text, highlightWords),
         bullet: b.kind === "list-item" ? b.bullet ?? "•" : undefined,
-        textIndent: b.kind === "list-item" ? 36 : b.kind === "quote" ? 24 : 0,
+        textIndent: b.kind === "list-item" ? 28 : b.kind === "quote" ? 20 : 0,
         keepWithNext: ["heading", "subheading", "minor-heading"].includes(b.kind),
       }));
 
@@ -154,7 +154,7 @@ export function runTypeset(params: {
       text: b.text,
       runs: parseInlineRuns(b.text, highlightWords),
       bullet: b.kind === "list-item" ? b.bullet ?? "•" : undefined,
-      textIndent: b.kind === "list-item" ? 36 : b.kind === "quote" ? 24 : 0,
+      textIndent: b.kind === "list-item" ? 28 : b.kind === "quote" ? 20 : 0,
       keepWithNext: ["heading", "subheading", "minor-heading"].includes(b.kind),
     }));
 

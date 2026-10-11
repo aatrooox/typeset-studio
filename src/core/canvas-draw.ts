@@ -7,38 +7,45 @@ import { CanvasSpec, FlowPage, TypesetConfig } from "./types";
  * - In browser: uses standard Web and system fonts (PingFang SC, Noto Sans SC, Songti SC)
  */
 export function resolveCanvasFontFamily(fontName: string, isServer: boolean = false): string {
-  const trimmed = (fontName || "").replace(/["'\\]/g, "").trim();
+  // Extract primary font before any fallback commas
+  const rawFirst = (fontName || "").split(",")[0] || "";
+  const trimmed = rawFirst.replace(/["'\\]/g, "").trim();
 
-  // Serif fonts (Songti / Noto Serif / Georgia)
-  if (
-    trimmed.includes("Songti") ||
-    trimmed.includes("Noto Serif") ||
-    trimmed.includes("serif") ||
-    trimmed.includes("Georgia")
-  ) {
-    return isServer
-      ? '"Songti SC", "Hiragino Sans GB", serif'
-      : '"Songti SC", "Noto Serif SC", serif';
+  // 1. Explicit font priority matching: The chosen font family MUST come first
+  if (trimmed.includes("Noto Sans") || trimmed === "Noto Sans SC") {
+    return isServer ? '"Hiragino Sans GB", sans-serif' : '"Noto Sans SC", "PingFang SC", sans-serif';
   }
-
-  // Kaiti fonts (LXGW WenKai / STKaiti / KaiTi)
-  if (trimmed.includes("Kai") || trimmed.includes("Kaiti") || trimmed.includes("WenKai")) {
-    return isServer
-      ? '"STKaiti", "Kaiti SC", "Hiragino Sans GB", serif'
-      : '"Kaiti SC", "LXGW WenKai Screen", "STKaiti", serif';
+  if (trimmed.includes("PingFang") || trimmed === "PingFang SC") {
+    return isServer ? '"Hiragino Sans GB", sans-serif' : '"PingFang SC", "Noto Sans SC", sans-serif';
   }
-
-  // Yuanti fonts (STYuanti / Yuanti SC)
+  if (trimmed.includes("Noto Serif") || trimmed === "Noto Serif SC") {
+    return isServer ? '"Songti SC", serif' : '"Noto Serif SC", "Songti SC", serif';
+  }
+  if (trimmed.includes("Songti") || trimmed === "Songti SC" || trimmed === "STSong") {
+    return isServer ? '"Songti SC", serif' : '"Songti SC", "Noto Serif SC", serif';
+  }
+  if (trimmed.includes("Kai") || trimmed.includes("WenKai")) {
+    return isServer
+      ? '"STKaiti", "Kaiti SC", "Songti SC", serif'
+      : '"LXGW WenKai GB Screen", "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif';
+  }
   if (trimmed.includes("Yuan") || trimmed.includes("Yuanti")) {
     return isServer
       ? '"STYuanti", "Yuanti SC", "Hiragino Sans GB", sans-serif'
-      : '"Yuanti SC", "STYuanti", sans-serif';
+      : '"Yuanti SC", "STYuanti", "PingFang SC", sans-serif';
+  }
+  if (trimmed.includes("Inter")) {
+    return isServer ? 'Inter, "Hiragino Sans GB", sans-serif' : 'Inter, "PingFang SC", sans-serif';
+  }
+  if (trimmed.includes("Georgia")) {
+    return isServer ? 'Georgia, "Songti SC", serif' : 'Georgia, "Songti SC", serif';
   }
 
-  // Sans-serif fonts (PingFang / Noto Sans / Inter / System)
-  return isServer
-    ? '"Hiragino Sans GB", "Songti SC", sans-serif'
-    : '"PingFang SC", "Noto Sans SC", "Hiragino Sans GB", sans-serif';
+  // 2. Generic fallbacks
+  if (trimmed.toLowerCase().includes("serif") || trimmed.includes("Song")) {
+    return isServer ? '"Songti SC", serif' : `"${trimmed}", "Songti SC", serif`;
+  }
+  return isServer ? '"Hiragino Sans GB", sans-serif' : `"${trimmed}", "PingFang SC", sans-serif`;
 }
 
 /**
@@ -193,14 +200,39 @@ export async function drawPageToContext(
     const lineX = stageX + line.x;
     const lineY = stageY + line.y;
 
-    // Bullet point prefix
+    // Quote vertical indicator bar (for markdown blockquotes > ...)
+    if (line.className === "body-quote") {
+      ctx.save();
+      ctx.fillStyle = theme.accentColor;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      const barHeight = Math.max(1, line.lineHeight - 8);
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(stageX, lineY + 4, 3.5, barHeight, 2);
+      } else {
+        ctx.rect(stageX, lineY + 4, 3.5, barHeight);
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Bullet point / Ordered list prefix
     if (line.bullet && line.bulletX !== undefined) {
       ctx.save();
-      ctx.font = resolveCanvasFont(line.font, isServer);
       ctx.fillStyle = theme.accentColor;
-      ctx.textBaseline = "top";
-      ctx.textAlign = "left";
-      ctx.fillText(line.bullet, stageX + line.bulletX, lineY);
+      if (line.bullet === "•") {
+        const bulletRadius = Math.max(3, Math.round(algorithm.baseFontSize * 0.08));
+        const bulletCenterX = stageX + line.bulletX + 8;
+        const bulletCenterY = lineY + Math.round(line.lineHeight * 0.42);
+        ctx.beginPath();
+        ctx.arc(bulletCenterX, bulletCenterY, bulletRadius, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.font = resolveCanvasFont(line.font, isServer);
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        ctx.fillText(line.bullet, stageX + line.bulletX, lineY);
+      }
       ctx.restore();
     }
 

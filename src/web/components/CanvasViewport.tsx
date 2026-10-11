@@ -50,14 +50,26 @@ const CanvasCard: React.FC<CanvasCardProps> = ({
       });
     };
 
-    drawPageToContext(ctx, {
-      page,
-      spec,
-      config,
-      totalPageCount,
-      getImage,
-      isServer: false,
-    });
+    const paint = () => {
+      if (cancelled || !canvas) return;
+      drawPageToContext(ctx, {
+        page,
+        spec,
+        config,
+        totalPageCount,
+        getImage,
+        isServer: false,
+      });
+    };
+
+    paint();
+
+    // Trigger re-render as soon as external web fonts (Google Fonts, Wenkai) finish loading
+    if (typeof document !== "undefined" && (document as any).fonts) {
+      (document as any).fonts.ready.then(() => {
+        paint();
+      });
+    }
 
     return () => {
       cancelled = true;
