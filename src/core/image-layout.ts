@@ -14,6 +14,17 @@ export function resolveImagePlacement(
   const padding = 16;
   const topTextBuffer = 300;
 
+  // 0. Absolute Free Layer: bypass preset calculation, preserve exact coordinates
+  if (img.isAbsolute) {
+    return {
+      ...img,
+      x: img.x ?? padding,
+      y: img.y ?? 100,
+      width: img.width ?? 420,
+      height: img.height ?? 280,
+    };
+  }
+
   // 1. Custom: bypass auto-calculation and honor exact user coordinates
   if (preset === "custom") {
     return {

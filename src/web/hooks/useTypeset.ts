@@ -175,6 +175,13 @@ export function useTypeset() {
     setAspectRatio(tpl.aspectRatio);
   };
 
+  const updateTypography = (partial: Partial<TypesetConfig["typography"]>) => {
+    setConfig((prev) => ({
+      ...prev,
+      typography: { ...prev.typography, ...partial },
+    }));
+  };
+
   return {
     aspectRatio,
     switchAspectRatio,
@@ -191,6 +198,7 @@ export function useTypeset() {
     result,
     updateAlgorithm,
     updateTheme,
+    updateTypography,
     updateSafeArea,
     loadTemplate,
   };

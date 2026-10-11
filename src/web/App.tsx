@@ -25,6 +25,7 @@ export const App: React.FC = () => {
     result,
     updateAlgorithm,
     updateTheme,
+    updateTypography,
     updateSafeArea,
     loadTemplate,
     setConfig,
@@ -134,6 +135,7 @@ export const App: React.FC = () => {
           config={config}
           onUpdateAlgorithm={updateAlgorithm}
           onUpdateTheme={updateTheme}
+          onUpdateTypography={updateTypography}
           onUpdateSafeArea={updateSafeArea}
           onUpdateBranding={(footer, watermark) => {
             setConfig((prev) => ({

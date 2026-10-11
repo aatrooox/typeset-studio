@@ -62,6 +62,11 @@ export interface FlowImage {
   captionHeight?: number;
   layoutPreset?: "auto" | "fill" | "staggered" | "mid-left" | "mid-right" | "center" | "corner-soft" | "custom";
   pageIndex?: number; // 1-indexed, for explicit page placement
+  isAbsolute?: boolean; // When true, detaches from flow and does NOT block text layout
+  zIndex?: number; // Layer stacking order (e.g. 0 background, 10 text, 20 foreground)
+  rotate?: number; // Rotation in degrees (e.g. -15 to 45)
+  opacity?: number; // Opacity (0.1 to 1.0)
+  borderRadius?: number; // Border radius in px (default 12)
 }
 
 export interface FlowLineFragment {
@@ -109,6 +114,8 @@ export interface AlgorithmParams {
   obstacleGap: number; // padding around images in px
   targetFillRatio: number; // 0.35 - 0.95
   contentBottomGap: number;
+  textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "center" | "bottom";
   safeArea: {
     top: number;
     right: number;
@@ -120,6 +127,7 @@ export interface AlgorithmParams {
 export interface ThemeColors {
   bgColor: string;
   textColor: string;
+  headingColor?: string;
   accentColor: string;
   quoteColor: string;
   captionColor: string;

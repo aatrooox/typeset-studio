@@ -10,6 +10,7 @@ import {
   Upload,
   Layers,
   Sparkles,
+  RotateCw,
 } from "lucide-react";
 import { FlowImage } from "../../core/types";
 
@@ -301,121 +302,316 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                     </button>
                   </div>
 
-                  {/* Settings */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-[#eeeeee] dark:border-[#1a1a1a]">
-                    <div>
-                      <span className="text-[#666666] block mb-1">排版预设</span>
-                      <select
-                        value={img.layoutPreset || "auto"}
-                        onChange={(e) =>
-                          onUpdateImage(img.id, { layoutPreset: e.target.value as any })
-                        }
-                        className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] focus:outline-none"
-                      >
-                        <option value="auto">自适应 (Auto)</option>
-                        <option value="mid-left">居左浮动 (Left)</option>
-                        <option value="mid-right">居右浮动 (Right)</option>
-                        <option value="center">居中横幅 (Center)</option>
-                        <option value="staggered">交错排版 (Staggered)</option>
-                        <option value="corner-soft">角落软着陆 (Corner)</option>
-                        <option value="fill">底部填满 (Fill)</option>
-                        <option value="custom">自定义坐标 (Custom)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <span className="text-[#666666] block mb-1">指定所属页</span>
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="自动流动"
-                        value={img.pageIndex || ""}
-                        onChange={(e) =>
-                          onUpdateImage(img.id, {
-                            pageIndex: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                          })
-                        }
-                        className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
-                      />
-                    </div>
+                  {/* Mode Selector: Flow vs Absolute */}
+                  <div className="flex bg-[#eeeeee] dark:bg-[#1a1a1a] p-0.5 rounded text-[11px] font-medium pt-1 border-t border-[#eeeeee] dark:border-[#1a1a1a]">
+                    <button
+                      onClick={() => onUpdateImage(img.id, { isAbsolute: false })}
+                      className={`flex-1 py-1 rounded transition-all text-center ${
+                        !img.isAbsolute
+                          ? "bg-white dark:bg-[#262626] text-black dark:text-white shadow-sm font-semibold"
+                          : "text-[#666666] dark:text-[#888888] hover:text-black dark:hover:text-white"
+                      }`}
+                    >
+                      绕排避让 (Flow)
+                    </button>
+                    <button
+                      onClick={() =>
+                        onUpdateImage(img.id, {
+                          isAbsolute: true,
+                          zIndex: img.zIndex ?? 15,
+                          rotate: img.rotate ?? 0,
+                          opacity: img.opacity ?? 1,
+                        })
+                      }
+                      className={`flex-1 py-1 rounded transition-all text-center ${
+                        img.isAbsolute
+                          ? "bg-white dark:bg-[#262626] text-black dark:text-white shadow-sm font-semibold"
+                          : "text-[#666666] dark:text-[#888888] hover:text-black dark:hover:text-white"
+                      }`}
+                    >
+                      自由图层 (Absolute)
+                    </button>
                   </div>
 
-                  {/* Size & Position Fine-tuning */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-[#666666] block mb-1">宽度 (W)</span>
-                      <input
-                        type="number"
-                        min="50"
-                        step="10"
-                        value={img.width ?? 420}
-                        onChange={(e) =>
-                          onUpdateImage(img.id, {
-                            width: Math.max(50, parseInt(e.target.value, 10) || 50),
-                          })
-                        }
-                        className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[#666666] block mb-1">高度 (H)</span>
-                      <input
-                        type="number"
-                        min="50"
-                        step="10"
-                        value={img.height ?? 280}
-                        onChange={(e) =>
-                          onUpdateImage(img.id, {
-                            height: Math.max(50, parseInt(e.target.value, 10) || 50),
-                          })
-                        }
-                        className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
-                      />
-                    </div>
-                  </div>
+                  {!img.isAbsolute ? (
+                    <>
+                      {/* Flow Settings */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-[#666666] block mb-1">排版预设</span>
+                          <select
+                            value={img.layoutPreset || "auto"}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, { layoutPreset: e.target.value as any })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] focus:outline-none"
+                          >
+                            <option value="auto">自适应 (Auto)</option>
+                            <option value="mid-left">居左浮动 (Left)</option>
+                            <option value="mid-right">居右浮动 (Right)</option>
+                            <option value="center">居中横幅 (Center)</option>
+                            <option value="staggered">交错排版 (Staggered)</option>
+                            <option value="corner-soft">角落软着陆 (Corner)</option>
+                            <option value="fill">底部填满 (Fill)</option>
+                            <option value="custom">自定义坐标 (Custom)</option>
+                          </select>
+                        </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-[#666666] block mb-1">纵向位置 Y</span>
-                      <input
-                        type="number"
-                        step="20"
-                        value={img.y ?? 300}
-                        onChange={(e) =>
-                          onUpdateImage(img.id, {
-                            y: parseInt(e.target.value, 10) || 0,
-                          })
-                        }
-                        className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[#666666] block mb-1">横向坐标 X</span>
-                      <input
-                        type="number"
-                        step="10"
-                        value={img.x ?? 16}
-                        onChange={(e) =>
-                          onUpdateImage(img.id, {
-                            x: parseInt(e.target.value, 10) || 0,
-                            layoutPreset: "custom",
-                          })
-                        }
-                        className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
-                      />
-                    </div>
-                  </div>
+                        <div>
+                          <span className="text-[#666666] block mb-1">指定所属页</span>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="自动流动"
+                            value={img.pageIndex || ""}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                pageIndex: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <span className="text-[#666666] text-[11px] block mb-1">图片说明 (Caption)</span>
-                    <input
-                      type="text"
-                      placeholder="下方说明文字..."
-                      value={img.caption || ""}
-                      onChange={(e) => onUpdateImage(img.id, { caption: e.target.value })}
-                      className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-2 py-1 text-black dark:text-white text-[11px] focus:outline-none"
-                    />
-                  </div>
+                      {/* Size & Position Fine-tuning */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-[#666666] block mb-1">宽度 (W)</span>
+                          <input
+                            type="number"
+                            min="50"
+                            step="10"
+                            value={img.width ?? 420}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                width: Math.max(50, parseInt(e.target.value, 10) || 50),
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[#666666] block mb-1">高度 (H)</span>
+                          <input
+                            type="number"
+                            min="50"
+                            step="10"
+                            value={img.height ?? 280}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                height: Math.max(50, parseInt(e.target.value, 10) || 50),
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-[#666666] block mb-1">纵向位置 Y</span>
+                          <input
+                            type="number"
+                            step="20"
+                            value={img.y ?? 300}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                y: parseInt(e.target.value, 10) || 0,
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[#666666] block mb-1">横向坐标 X</span>
+                          <input
+                            type="number"
+                            step="10"
+                            value={img.x ?? 16}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                x: parseInt(e.target.value, 10) || 0,
+                                layoutPreset: "custom",
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-[#666666] text-[11px] block mb-1">图片说明 (Caption)</span>
+                        <input
+                          type="text"
+                          placeholder="下方说明文字..."
+                          value={img.caption || ""}
+                          onChange={(e) => onUpdateImage(img.id, { caption: e.target.value })}
+                          className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-2 py-1 text-black dark:text-white text-[11px] focus:outline-none"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Absolute Layer Controls */}
+                      <div className="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-500/10 p-1.5 rounded flex items-center gap-1 font-medium">
+                        <Sparkles className="w-3 h-3 shrink-0" />
+                        <span>自由定位图层：脱离文本流，不触发障碍物绕排</span>
+                      </div>
+
+                      {/* Z-Index & Rotation */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <div className="flex justify-between text-[#666666] mb-1">
+                            <span>层级 (Z-Index)</span>
+                            <span className="font-mono text-black dark:text-white font-semibold">
+                              {img.zIndex ?? 15}
+                            </span>
+                          </div>
+                          <div className="flex gap-1">
+                            {[
+                              { label: "底", val: 0, title: "底层背景" },
+                              { label: "文字", val: 10, title: "正文同层" },
+                              { label: "顶", val: 20, title: "置顶贴纸" },
+                            ].map((z) => (
+                              <button
+                                key={z.val}
+                                onClick={() => onUpdateImage(img.id, { zIndex: z.val })}
+                                title={z.title}
+                                className={`flex-1 py-0.5 text-[10px] rounded border ${
+                                  (img.zIndex ?? 15) === z.val
+                                    ? "bg-black dark:bg-white text-white dark:text-black border-transparent font-bold"
+                                    : "border-[#d4d4d4] dark:border-[#262626] text-[#666666] dark:text-[#888888]"
+                                }`}
+                              >
+                                {z.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[#666666] mb-1">
+                            <span className="flex items-center gap-0.5">
+                              <RotateCw className="w-2.5 h-2.5" /> 旋转角度
+                            </span>
+                            <span className="font-mono text-black dark:text-white font-semibold">
+                              {img.rotate ?? 0}°
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-45"
+                            max="45"
+                            step="1"
+                            value={img.rotate ?? 0}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, { rotate: parseInt(e.target.value, 10) })
+                            }
+                            className="w-full h-1.5 bg-[#e5e5e5] dark:bg-[#222222] rounded cursor-pointer mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Opacity & Border Radius */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <div className="flex justify-between text-[#666666] mb-1">
+                            <span>不透明度</span>
+                            <span className="font-mono text-black dark:text-white font-semibold">
+                              {Math.round((img.opacity ?? 1) * 100)}%
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.1"
+                            max="1"
+                            step="0.05"
+                            value={img.opacity ?? 1}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, { opacity: parseFloat(e.target.value) })
+                            }
+                            className="w-full h-1.5 bg-[#e5e5e5] dark:bg-[#222222] rounded cursor-pointer mt-1"
+                          />
+                        </div>
+
+                        <div>
+                          <span className="text-[#666666] block mb-1">圆角半径 (px)</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="4"
+                            value={img.borderRadius ?? 12}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                borderRadius: parseInt(e.target.value, 10) || 0,
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Precise Size & Position */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-[#666666] block mb-1">横向 X</span>
+                          <input
+                            type="number"
+                            step="10"
+                            value={img.x ?? 0}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, { x: parseInt(e.target.value, 10) || 0 })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[#666666] block mb-1">纵向 Y</span>
+                          <input
+                            type="number"
+                            step="10"
+                            value={img.y ?? 0}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, { y: parseInt(e.target.value, 10) || 0 })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-[#666666] block mb-1">宽度 (W)</span>
+                          <input
+                            type="number"
+                            step="10"
+                            value={img.width ?? 420}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                width: Math.max(20, parseInt(e.target.value, 10) || 20),
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[#666666] block mb-1">高度 (H)</span>
+                          <input
+                            type="number"
+                            step="10"
+                            value={img.height ?? 280}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                height: Math.max(20, parseInt(e.target.value, 10) || 20),
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))
             )}

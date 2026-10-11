@@ -30,16 +30,19 @@ export function getDefaultConfig(aspectRatio = "longform-3-4" as TypesetConfig["
     aspectRatio,
     algorithm: {
       baseFontSize: baseSize,
-      scaleRatio: 1.25,
+      scaleRatio: aspectRatio === "wechat-cover-2.35" ? 1.35 : 1.25,
       lineHeightMultiplier: 1.45,
       obstacleGap: 24,
       targetFillRatio: 0.8,
       contentBottomGap: 20,
+      textAlign: "left",
+      verticalAlign: aspectRatio === "wechat-cover-2.35" ? "center" : "top",
       safeArea: spec.defaultSafeArea,
     },
     theme: {
       bgColor: "#ffffff",
       textColor: "#171717",
+      headingColor: "#171717",
       accentColor: "#059669",
       quoteColor: "#525252",
       captionColor: "#737373",
@@ -101,6 +104,8 @@ export function runTypeset(params: {
       const subPages = paginateBlocks(flowBlocks, stageWidth, stageHeight, pageImages, {
         obstacleGap: config.algorithm.obstacleGap,
         pageImageLimit: 2,
+        textAlign: config.algorithm.textAlign,
+        verticalAlign: config.algorithm.verticalAlign,
       });
 
       const firstSubPage = subPages[0] ?? {
@@ -134,6 +139,8 @@ export function runTypeset(params: {
     pages = paginateBlocks(flowBlocks, stageWidth, stageHeight, images, {
       obstacleGap: config.algorithm.obstacleGap,
       pageImageLimit: config.aspectRatio === "longform-3-4" ? 2 : 1,
+      textAlign: config.algorithm.textAlign,
+      verticalAlign: config.algorithm.verticalAlign,
     });
   }
 

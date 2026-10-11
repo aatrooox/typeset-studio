@@ -28,6 +28,8 @@ export interface PaginateOptions {
   pageImageLimit?: number;
   minPages?: number;
   maxPages?: number;
+  textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "center" | "bottom";
 }
 
 /**
@@ -80,9 +82,10 @@ export function paginateBlocks(
       const indent = block.textIndent ?? 0;
       let intervals = [{ left: 0, right: stageWidth }];
 
-      // Filter obstacles that collide with this line vertically
+      // Filter obstacles that collide with this line vertically (exclude isAbsolute free layers)
       const blockers = images.filter(
         (img) =>
+          !img.isAbsolute &&
           y + block.lineHeight > img.y - gap &&
           y < img.y + img.height + (img.captionHeight ?? 0) + gap,
       );
@@ -153,10 +156,26 @@ export function paginateBlocks(
         };
       });
 
+      let lineX = best.left;
+      let bulletX =
+        compareCursor(cursor, START) === 0 && block.bullet ? best.left - indent : undefined;
+
+      const occupied = best.line.width;
+      if (options.textAlign === "center") {
+        const free = Math.max(0, best.width - occupied);
+        const shift = Math.round(free / 2);
+        lineX += shift;
+        if (bulletX !== undefined) bulletX += shift;
+      } else if (options.textAlign === "right") {
+        const free = Math.max(0, best.width - occupied);
+        lineX += free;
+        if (bulletX !== undefined) bulletX += free;
+      }
+
       lines.push({
         text: fragments.map((f) => f.text).join(""),
         fragments,
-        x: best.left,
+        x: lineX,
         y,
         className: block.className,
         font: block.font,
@@ -165,8 +184,7 @@ export function paginateBlocks(
         start: cursor,
         end: best.line.end,
         bullet: compareCursor(cursor, START) === 0 ? block.bullet : undefined,
-        bulletX:
-          compareCursor(cursor, START) === 0 && block.bullet ? best.left - indent : undefined,
+        bulletX,
       });
 
       cursor = best.line.end;
@@ -267,12 +285,43 @@ export function paginateBlocks(
     }
 
     const textBottom = lines.reduce((max, l) => Math.max(max, l.y + l.lineHeight), 0);
-    const imageBottom = images.reduce(
+    const flowImages = images.filter((img) => !img.isAbsolute);
+    const imageBottom = flowImages.reduce(
       (max, img) => Math.max(max, img.y + img.height + (img.captionHeight ?? 0)),
       0,
     );
     const contentBottom = Math.max(textBottom, imageBottom);
     const fillRatio = stageHeight > 0 ? Math.min(1, contentBottom / stageHeight) : 0;
+
+    // Apply Vertical Alignment (center / bottom)
+    if (lines.length > 0 && options.verticalAlign && options.verticalAlign !== "top") {
+      const minTextY = lines.reduce((min, l) => Math.min(min, l.y), Infinity);
+      const minImageY = flowImages.reduce((min, img) => Math.min(min, img.y), Infinity);
+      const contentTop = Math.min(minTextY, minImageY === Infinity ? minTextY : minImageY);
+      const contentSpan = contentBottom - contentTop;
+
+      if (stageHeight > contentSpan) {
+        let offsetY = 0;
+        if (options.verticalAlign === "center") {
+          const targetTop = Math.round((stageHeight - contentSpan) / 2);
+          offsetY = targetTop - contentTop;
+        } else if (options.verticalAlign === "bottom") {
+          const targetTop = stageHeight - contentSpan;
+          offsetY = targetTop - contentTop;
+        }
+
+        if (offsetY !== 0) {
+          for (const line of lines) {
+            line.y += offsetY;
+          }
+          for (const img of flowImages) {
+            if (img.layoutPreset !== "custom") {
+              img.y += offsetY;
+            }
+          }
+        }
+      }
+    }
 
     pages.push({
       pageNumber: pageNum,

@@ -23,7 +23,6 @@ describe("resolveImagePlacement and Layout Presets", () => {
       stageWidth,
       stageHeight,
     );
-    // stageWidth (904) - width (420) - padding (16) = 468
     expect(resolved.x).toBe(468);
     expect(resolved.y).toBe(420);
     expect(resolved.width).toBe(420);
@@ -48,7 +47,6 @@ describe("resolveImagePlacement and Layout Presets", () => {
       stageWidth,
       stageHeight,
     );
-    // (904 - 420) / 2 = 242
     expect(resolved.x).toBe(242);
     expect(resolved.y).toBe(420);
   });
@@ -95,7 +93,64 @@ describe("resolveImagePlacement and Layout Presets", () => {
       images: [{ ...baseImage, layoutPreset: "mid-right" }],
       config,
     });
-    // Image on right: x = 904 - 420 - 16 = 468
     expect(resultRight.pages[0].images[0].x).toBe(468);
+  });
+
+  it("centers text vertically when verticalAlign is center", () => {
+    const configTop = getDefaultConfig("wechat-cover-2.35");
+    configTop.algorithm.verticalAlign = "top";
+    const markdown = `# 微信封面大标题
+副标题简述`;
+
+    const resTop = runTypeset({ markdown, config: configTop });
+    const topY = resTop.pages[0].lines[0].y;
+
+    const configCenter = getDefaultConfig("wechat-cover-2.35");
+    configCenter.algorithm.verticalAlign = "center";
+    const resCenter = runTypeset({ markdown, config: configCenter });
+    const centerY = resCenter.pages[0].lines[0].y;
+
+    // Centered Y must be significantly greater than top Y (pushed down towards middle)
+    expect(centerY).toBeGreaterThan(topY + 100);
+  });
+
+  it("centers text horizontally when textAlign is center", () => {
+    const configLeft = getDefaultConfig("longform-3-4");
+    configLeft.algorithm.textAlign = "left";
+    const markdown = `# 居中测试标题`;
+
+    const resLeft = runTypeset({ markdown, config: configLeft });
+    const leftX = resLeft.pages[0].lines[0].x;
+
+    const configCenter = getDefaultConfig("longform-3-4");
+    configCenter.algorithm.textAlign = "center";
+    const resCenter = runTypeset({ markdown, config: configCenter });
+    const centerX = resCenter.pages[0].lines[0].x;
+
+    expect(centerX).toBeGreaterThan(leftX + 50);
+  });
+
+  it("ignores isAbsolute images during text obstacle flow", () => {
+    const config = getDefaultConfig("longform-3-4");
+    const markdown = `这是一段超长的连续正文文本，用于测试绝对定位图层是否会被正文无视而直接穿过。`;
+
+    // 1. Flow image blocks text width
+    const resFlow = runTypeset({
+      markdown,
+      images: [{ ...baseImage, layoutPreset: "mid-left", width: 420, isAbsolute: false }],
+      config,
+    });
+
+    // 2. Absolute image does NOT block text
+    const resAbs = runTypeset({
+      markdown,
+      images: [{ ...baseImage, isAbsolute: true, x: 50, y: 50, width: 420, rotate: 15, zIndex: 20 }],
+      config,
+    });
+
+    // In absolute mode, line should have wider maxWidth or unhindered flow
+    expect(resAbs.pages[0].lines[0].x).toBe(0);
+    expect(resAbs.pages[0].images[0].rotate).toBe(15);
+    expect(resAbs.pages[0].images[0].zIndex).toBe(20);
   });
 });

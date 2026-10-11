@@ -95,18 +95,23 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                     height: stageHeight,
                   }}
                 >
-                  {/* Obstacle Images */}
+                  {/* Obstacle Images & Free Layers */}
                   {page.images.map((img) => (
                     <React.Fragment key={img.id}>
                       <img
                         src={img.src}
                         alt={img.alt}
-                        className="absolute object-cover rounded-xl shadow-md transition-all duration-300 ease-out"
+                        className="absolute object-cover shadow-md transition-all duration-300 ease-out select-none"
                         style={{
                           left: img.x,
                           top: img.y,
                           width: img.width,
                           height: img.height,
+                          zIndex: img.zIndex ?? (img.isAbsolute ? 20 : 5),
+                          transform: `rotate(${img.rotate || 0}deg)`,
+                          transformOrigin: "center center",
+                          opacity: img.opacity ?? 1,
+                          borderRadius: `${img.borderRadius ?? 12}px`,
                           backgroundColor: theme.cardBg || "#1a1a1a",
                         }}
                       />
@@ -117,6 +122,9 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                             left: img.x,
                             top: img.y + img.height + 8,
                             width: img.width,
+                            zIndex: (img.zIndex ?? (img.isAbsolute ? 20 : 5)) + 1,
+                            transform: `rotate(${img.rotate || 0}deg)`,
+                            opacity: img.opacity ?? 1,
                             color: theme.captionColor,
                             fontSize: Math.max(14, Math.round(algorithm.baseFontSize * 0.45)),
                             lineHeight: "24px",
@@ -134,10 +142,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                       {/* Bullet point if list item */}
                       {line.bullet && typeof line.bulletX === "number" && (
                         <div
-                          className="absolute font-semibold"
+                          className="absolute font-semibold pointer-events-none"
                           style={{
                             left: line.bulletX,
                             top: line.y,
+                            zIndex: 10,
                             font: line.font,
                             lineHeight: `${line.lineHeight}px`,
                             color: theme.accentColor,
@@ -153,13 +162,14 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                           left: line.x,
                           top: line.y,
                           width: line.maxWidth,
+                          zIndex: 10,
                           font: line.font,
                           lineHeight: `${line.lineHeight}px`,
                           color:
                             line.className === "body-quote"
                               ? theme.quoteColor
                               : line.className.includes("heading")
-                                ? theme.accentColor
+                                ? (theme.headingColor || theme.textColor)
                                 : theme.textColor,
                         }}
                       >
