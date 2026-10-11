@@ -1,7 +1,84 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { LayoutGrid, Rows, ZoomIn } from "lucide-react";
-import { computeStageDimensions } from "../../core/geometry";
-import { TypesetResult } from "../../core/types";
+import { drawPageToContext } from "../../core/canvas-draw";
+import { CanvasSpec, FlowPage, TypesetConfig, TypesetResult } from "../../core/types";
+
+interface CanvasCardProps {
+  page: FlowPage;
+  spec: CanvasSpec;
+  config: TypesetConfig;
+  totalPageCount: number;
+  zoom: number;
+}
+
+const CanvasCard: React.FC<CanvasCardProps> = ({
+  page,
+  spec,
+  config,
+  totalPageCount,
+  zoom,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let cancelled = false;
+
+    const getImage = (src: string) => {
+      if (!src) return Promise.resolve(null);
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          if (!cancelled) resolve(img);
+        };
+        img.onerror = () => {
+          const img2 = new Image();
+          img2.onload = () => {
+            if (!cancelled) resolve(img2);
+          };
+          img2.onerror = () => {
+            if (!cancelled) resolve(null);
+          };
+          img2.src = src;
+        };
+        img.src = src;
+      });
+    };
+
+    drawPageToContext(ctx, {
+      page,
+      spec,
+      config,
+      totalPageCount,
+      getImage,
+      isServer: false,
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page, spec, config, totalPageCount]);
+
+  return (
+    <canvas
+      id={`typeset-page-${page.pageNumber}`}
+      ref={canvasRef}
+      width={spec.width}
+      height={spec.height}
+      className="typeset-page absolute top-0 left-0 border border-[#e0e0e0] dark:border-[#222222] shadow-sm select-none"
+      style={{
+        width: spec.width * zoom,
+        height: spec.height * zoom,
+        backgroundColor: config.theme.bgColor,
+      }}
+    />
+  );
+};
 
 interface CanvasViewportProps {
   result: TypesetResult;
@@ -25,12 +102,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   onFocusPage,
 }) => {
   const { pages, canvasSpec, config } = result;
-  const { algorithm, theme } = config;
-  const { stageWidth, stageHeight, stageX, stageY } = computeStageDimensions(
-    canvasSpec,
-    algorithm.safeArea,
-    algorithm.contentBottomGap,
-  );
 
   return (
     <main
@@ -146,220 +217,13 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
                     height: canvasSpec.height * zoom,
                   }}
                 >
-              {/* Scaled Page Container */}
-              <div
-                id={`typeset-page-${page.pageNumber}`}
-                className="typeset-page absolute top-0 left-0 overflow-hidden border border-[#e0e0e0] dark:border-[#222222]"
-                style={{
-                  width: canvasSpec.width,
-                  height: canvasSpec.height,
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "top left",
-                  backgroundColor: theme.bgColor,
-                  color: theme.textColor,
-                }}
-              >
-                {/* Header Brand Bar (for cover or article top) */}
-                {(() => {
-                  const chrome = config.chrome;
-                  const showHeader = chrome?.showHeader ?? Boolean(config.watermarkText?.trim());
-                  const showWatermark = (chrome?.showWatermark ?? true) && Boolean(config.watermarkText?.trim());
-                  const showPageNum = chrome?.showPageNumber ?? (config.aspectRatio === "longform-3-4" && pages.length > 1);
-
-                  if (!showHeader || (!showWatermark && !showPageNum)) {
-                    return null;
-                  }
-
-                  return (
-                    <div
-                      className="absolute pointer-events-none"
-                      style={{
-                        left: algorithm.safeArea.left,
-                        top: Math.max(20, algorithm.safeArea.top - 60),
-                        right: algorithm.safeArea.right,
-                        height: 40,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      {showWatermark ? (
-                        <span
-                          className="font-mono text-sm tracking-wider uppercase opacity-40 font-semibold"
-                          style={{ color: theme.watermarkColor }}
-                        >
-                          {config.watermarkText}
-                        </span>
-                      ) : <span />}
-
-                      {showPageNum && (
-                        <span
-                          className="font-mono text-xs px-2 py-0.5 rounded-full border border-current opacity-40"
-                          style={{ color: theme.textColor }}
-                        >
-                          P.{String(page.pageNumber).padStart(2, "0")}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Content Stage (where text and obstacles flow) */}
-                <div
-                  className="absolute"
-                  style={{
-                    left: stageX,
-                    top: stageY,
-                    width: stageWidth,
-                    height: stageHeight,
-                  }}
-                >
-                  {/* Obstacle Images & Free Layers */}
-                  {page.images.map((img) => (
-                    <React.Fragment key={img.id}>
-                      <img
-                        src={img.src}
-                        alt={img.alt}
-                        className="absolute object-cover shadow-md transition-all duration-300 ease-out select-none"
-                        style={{
-                          left: img.x,
-                          top: img.y,
-                          width: img.width,
-                          height: img.height,
-                          zIndex: img.zIndex ?? (img.isAbsolute ? 20 : 5),
-                          transform: `rotate(${img.rotate || 0}deg)`,
-                          transformOrigin: "center center",
-                          opacity: img.opacity ?? 1,
-                          borderRadius: `${img.borderRadius ?? 12}px`,
-                          backgroundColor: theme.cardBg || "#1a1a1a",
-                        }}
-                      />
-                      {img.caption && (
-                        <div
-                          className="absolute text-center truncate px-2 transition-all duration-300 ease-out"
-                          style={{
-                            left: img.x,
-                            top: img.y + img.height + 8,
-                            width: img.width,
-                            zIndex: (img.zIndex ?? (img.isAbsolute ? 20 : 5)) + 1,
-                            transform: `rotate(${img.rotate || 0}deg)`,
-                            opacity: img.opacity ?? 1,
-                            color: theme.captionColor,
-                            fontSize: Math.max(14, Math.round(algorithm.baseFontSize * 0.45)),
-                            lineHeight: "24px",
-                          }}
-                        >
-                          {img.caption}
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ))}
-
-                  {/* Flowed Text Lines */}
-                  {page.lines.map((line, lIdx) => (
-                    <React.Fragment key={lIdx}>
-                      {/* Bullet point if list item */}
-                      {line.bullet && typeof line.bulletX === "number" && (
-                        <div
-                          className="absolute font-semibold pointer-events-none"
-                          style={{
-                            left: line.bulletX,
-                            top: line.y,
-                            zIndex: 10,
-                            font: line.font,
-                            lineHeight: `${line.lineHeight}px`,
-                            color: theme.accentColor,
-                          }}
-                        >
-                          {line.bullet}
-                        </div>
-                      )}
-
-                      <div
-                        className={`absolute whitespace-pre select-text ${line.className}`}
-                        style={{
-                          left: line.x,
-                          top: line.y,
-                          width: line.maxWidth,
-                          zIndex: 10,
-                          font: line.font,
-                          lineHeight: `${line.lineHeight}px`,
-                          color:
-                            line.className === "body-quote"
-                              ? theme.quoteColor
-                              : line.className.includes("heading")
-                                ? (theme.headingColor || theme.textColor)
-                                : theme.textColor,
-                        }}
-                      >
-                        {line.fragments.map((frag, fIdx) => (
-                          <span
-                            key={fIdx}
-                            style={{
-                              font: frag.font,
-                              fontWeight: frag.bold ? 700 : undefined,
-                              fontStyle: frag.italic ? "italic" : undefined,
-                              marginLeft: frag.gapBefore,
-                              display: "inline-block",
-                              verticalAlign: "top",
-                              width: frag.occupiedWidth,
-                              color: frag.highlight ? theme.accentColor : undefined,
-                            }}
-                          >
-                            {frag.text}
-                          </span>
-                        ))}
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </div>
-
-                {/* Footer Bar */}
-                {(() => {
-                  const chrome = config.chrome;
-                  const showFooter = chrome?.showFooter ?? Boolean(config.footerText?.trim());
-                  const showFooterText = (chrome?.showFooterText ?? true) && Boolean(config.footerText?.trim());
-                  const showFillRatio = chrome?.showFillRatio === true;
-                  const showDivider = chrome?.showFooterDivider ?? showFooterText;
-
-                  if (!showFooter || (!showFooterText && !showFillRatio)) {
-                    return null;
-                  }
-
-                  return (
-                    <div
-                      className="absolute flex items-center justify-between pointer-events-none"
-                      style={{
-                        left: algorithm.safeArea.left,
-                        bottom: Math.max(24, Math.floor(algorithm.safeArea.bottom * 0.4)),
-                        right: algorithm.safeArea.right,
-                        height: 36,
-                        borderTop: showDivider ? "1px solid currentColor" : "none",
-                        opacity: 0.8,
-                        paddingTop: showDivider ? 8 : 0,
-                      }}
-                    >
-                      {showFooterText ? (
-                        <span
-                          className="text-xs font-mono tracking-tight opacity-50"
-                          style={{ color: theme.textColor }}
-                        >
-                          {config.footerText}
-                        </span>
-                      ) : <span />}
-
-                      {showFillRatio && (
-                        <span
-                          className="text-[11px] font-mono px-2 py-0.5 rounded opacity-50"
-                          style={{ color: theme.watermarkColor }}
-                        >
-                          填充率 {Math.round(page.fillRatio * 100)}%
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
-                  </div>
+                  <CanvasCard
+                    page={page}
+                    spec={canvasSpec}
+                    config={config}
+                    totalPageCount={pages.length}
+                    zoom={zoom}
+                  />
                 </div>
               </div>
             );

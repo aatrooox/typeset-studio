@@ -166,7 +166,7 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <Download className="w-3.5 h-3.5" />
           )}
-          <span>{isExporting ? "服务端生成中..." : "导出图片"}</span>
+          <span>{isExporting ? "导出中..." : "导出图片"}</span>
           {pageCount > 1 && (
             <span className="text-[10px] bg-white/20 dark:bg-black text-white px-1.5 py-0.2 rounded font-mono">
               {pageCount}P

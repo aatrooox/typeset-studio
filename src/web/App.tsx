@@ -175,10 +175,34 @@ export const App: React.FC = () => {
     return () => observer.disconnect();
   }, [isAutoFit, result.canvasSpec.width, result.canvasSpec.height, result.pages.length, viewMode]);
 
-  // Server-side native Canvas rendering export (100% Chrome-free!)
+  // WYSIWYG Direct Canvas export with graceful server-side fallback
   const handleExport = async () => {
     setIsExporting(true);
     try {
+      const canvasElements = document.querySelectorAll<HTMLCanvasElement>("canvas.typeset-page");
+      if (canvasElements.length > 0) {
+        let exportSucceeded = true;
+        for (let i = 0; i < canvasElements.length; i++) {
+          const canvas = canvasElements[i]!;
+          try {
+            const dataUrl = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.download = `typeset-${aspectRatio}-p${i + 1}-${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+          } catch (taintErr) {
+            console.warn("Canvas is tainted by external non-CORS image, falling back to server export:", taintErr);
+            exportSucceeded = false;
+            break;
+          }
+        }
+        if (exportSucceeded) {
+          setIsExporting(false);
+          return;
+        }
+      }
+
+      // Server-side native Canvas fallback (e.g. When tainted by external images)
       const response = await fetch("/api/render/export", {
         method: "POST",
         headers: {
@@ -199,7 +223,6 @@ export const App: React.FC = () => {
         throw new Error(data.error || "No pages returned from server-side render");
       }
 
-      // Download each server-rendered PNG
       for (const pageItem of data.pages) {
         const link = document.createElement("a");
         link.download = `typeset-${aspectRatio}-p${pageItem.pageNumber}-${Date.now()}.png`;
@@ -207,24 +230,8 @@ export const App: React.FC = () => {
         link.click();
       }
     } catch (err) {
-      console.error("Server-side export failed, attempting client fallback:", err);
-      try {
-        const pageElements = document.querySelectorAll<HTMLElement>(".typeset-page");
-        if (!pageElements.length) throw err;
-        for (let i = 0; i < pageElements.length; i++) {
-          const node = pageElements[i]!;
-          const originalTransform = node.style.transform;
-          node.style.transform = "none";
-          const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true });
-          node.style.transform = originalTransform;
-          const link = document.createElement("a");
-          link.download = `typeset-${aspectRatio}-p${i + 1}-${Date.now()}.png`;
-          link.href = dataUrl;
-          link.click();
-        }
-      } catch (fallbackErr) {
-        alert("导出失败，请检查网络或后端服务连接");
-      }
+      console.error("Export failed:", err);
+      alert("导出失败，请检查网络或后端服务连接");
     } finally {
       setIsExporting(false);
     }

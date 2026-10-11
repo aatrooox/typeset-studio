@@ -150,8 +150,17 @@ export function useTypeset() {
         algorithm: {
           ...prev.algorithm,
           baseFontSize: nextDefault.algorithm.baseFontSize,
+          scaleRatio: nextDefault.algorithm.scaleRatio,
           safeArea: nextDefault.algorithm.safeArea,
+          textAlign: nextDefault.algorithm.textAlign,
+          verticalAlign: nextDefault.algorithm.verticalAlign,
+          contentBottomGap: nextDefault.algorithm.contentBottomGap,
         },
+        chrome: {
+          ...nextDefault.chrome,
+        },
+        watermarkText: nextDefault.watermarkText,
+        footerText: nextDefault.footerText,
       };
     });
   };
