@@ -28,8 +28,8 @@
     "cardBg": "#ffffff"
   },
   "typography": {
-    "headingFont": "LXGWNeoZhiSongPlus",
-    "bodyFont": "LXGWNeoZhiSongPlus"
+    "headingFont": "Songti SC",
+    "bodyFont": "Songti SC"
   },
   "footerText": "Typeset Studio · 纯算法空间排版",
   "watermarkText": "@ANTIGRAVITY",

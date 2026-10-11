@@ -38,8 +38,8 @@ function seedDefaultTemplates(): void {
         cardBg: "#18181b",
       },
       typography: {
-        headingFont: "AlimamaShuHeiTi",
-        bodyFont: "LXGWNeoZhiSongPlus",
+        headingFont: "PingFang SC",
+        bodyFont: "Songti SC",
       },
       footerText: "",
       watermarkText: "",
@@ -93,8 +93,8 @@ function seedDefaultTemplates(): void {
         cardBg: "#f3f4f6",
       },
       typography: {
-        headingFont: "AlimamaShuHeiTi",
-        bodyFont: "LXGWNeoZhiSongPlus",
+        headingFont: "PingFang SC",
+        bodyFont: "Songti SC",
       },
       footerText: "",
       watermarkText: "SPECIAL EDITION · 专栏特辑",
@@ -148,8 +148,8 @@ function seedDefaultTemplates(): void {
         cardBg: "#1c1c1c",
       },
       typography: {
-        headingFont: "AlimamaShuHeiTi",
-        bodyFont: "LXGWNeoZhiSongPlus",
+        headingFont: "PingFang SC",
+        bodyFont: "Songti SC",
       },
       footerText: "Typeset Studio · 贴图精选",
       watermarkText: "FEATURED NEWSPIC",
@@ -196,8 +196,8 @@ function seedDefaultTemplates(): void {
         cardBg: "#ffffff",
       },
       typography: {
-        headingFont: "LXGWNeoZhiSongPlus",
-        bodyFont: "LXGWNeoZhiSongPlus",
+        headingFont: "Songti SC",
+        bodyFont: "Songti SC",
       },
       footerText: "Typeset Studio · 纯算法空间排版",
       watermarkText: "@ANTIGRAVITY",
@@ -233,8 +233,8 @@ function seedDefaultTemplates(): void {
         cardBg: "#27272a",
       },
       typography: {
-        headingFont: "AlimamaShuHeiTi",
-        bodyFont: "LXGWWenKaiScreen",
+        headingFont: "PingFang SC",
+        bodyFont: "Kaiti SC",
       },
       footerText: "",
       watermarkText: "",
@@ -270,7 +270,7 @@ function seedDefaultTemplates(): void {
         cardBg: "#18181b",
       },
       typography: {
-        headingFont: "AlimamaShuHeiTi",
+        headingFont: "PingFang SC",
         bodyFont: "SourceHanSansSC, sans-serif",
       },
       footerText: "TECH ENGINEERING INSIGHTS",

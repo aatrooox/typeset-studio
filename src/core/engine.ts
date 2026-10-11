@@ -55,8 +55,8 @@ export function getDefaultConfig(aspectRatio = "longform-3-4" as TypesetConfig["
       borderSubtle: "#e5e5e5",
     },
     typography: {
-      headingFont: "AlimamaShuHeiTi",
-      bodyFont: "LXGWNeoZhiSongPlus",
+      headingFont: "PingFang SC",
+      bodyFont: "Songti SC",
     },
     footerText: isCover ? "" : "Typeset Studio · 纯算法排版",
     watermarkText: isCover ? "" : "@Antigravity",

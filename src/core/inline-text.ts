@@ -128,7 +128,12 @@ export function parseContentBlocks(rawMarkdown: string): ContentBlock[] {
 
 export function isPageMarkerLine(line: string): boolean {
   const trimmed = line.trim();
-  return /^【第([一二三四五六七八九十百两\d]+)页】$/.test(trimmed) || /^【Page\s*(\d+)】$/i.test(trimmed);
+  return (
+    /^【第([一二三四五六七八九十百两\d]+)页】$/.test(trimmed) ||
+    /^【Page\s*(\d+)】$/i.test(trimmed) ||
+    /^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed) ||
+    /^<!--\s*(?:pagebreak|page-break|next-page)\s*-->$/i.test(trimmed)
+  );
 }
 
 export function splitTextByPages(text: string): string[] {

@@ -175,34 +175,56 @@ export const App: React.FC = () => {
     return () => observer.disconnect();
   }, [isAutoFit, result.canvasSpec.width, result.canvasSpec.height, result.pages.length, viewMode]);
 
-  // Client-side instant PNG download using html-to-image
+  // Server-side native Canvas rendering export (100% Chrome-free!)
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const pageElements = document.querySelectorAll<HTMLElement>(".typeset-page");
-      if (!pageElements.length) return;
+      const response = await fetch("/api/render/export", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminKey ? { "X-Admin-Key": adminKey } : {}),
+        },
+        body: JSON.stringify({
+          result,
+        }),
+      });
 
-      for (let i = 0; i < pageElements.length; i++) {
-        const node = pageElements[i]!;
-        // Temporarily reset transform scale for crisp 1:1 render
-        const originalTransform = node.style.transform;
-        node.style.transform = "none";
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
 
-        const dataUrl = await toPng(node, {
-          pixelRatio: 2, // High-DPI export
-          cacheBust: true,
-        });
+      const data = await response.json();
+      if (!data.ok || !data.pages?.length) {
+        throw new Error(data.error || "No pages returned from server-side render");
+      }
 
-        node.style.transform = originalTransform;
-
+      // Download each server-rendered PNG
+      for (const pageItem of data.pages) {
         const link = document.createElement("a");
-        link.download = `typeset-${aspectRatio}-p${i + 1}-${Date.now()}.png`;
-        link.href = dataUrl;
+        link.download = `typeset-${aspectRatio}-p${pageItem.pageNumber}-${Date.now()}.png`;
+        link.href = pageItem.dataUrl;
         link.click();
       }
     } catch (err) {
-      console.error("Export failed:", err);
-      alert("导出失败，请重试或检查图片跨域策略");
+      console.error("Server-side export failed, attempting client fallback:", err);
+      try {
+        const pageElements = document.querySelectorAll<HTMLElement>(".typeset-page");
+        if (!pageElements.length) throw err;
+        for (let i = 0; i < pageElements.length; i++) {
+          const node = pageElements[i]!;
+          const originalTransform = node.style.transform;
+          node.style.transform = "none";
+          const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true });
+          node.style.transform = originalTransform;
+          const link = document.createElement("a");
+          link.download = `typeset-${aspectRatio}-p${i + 1}-${Date.now()}.png`;
+          link.href = dataUrl;
+          link.click();
+        }
+      } catch (fallbackErr) {
+        alert("导出失败，请检查网络或后端服务连接");
+      }
     } finally {
       setIsExporting(false);
     }

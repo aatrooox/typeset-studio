@@ -28,8 +28,8 @@
     "cardBg": "#27272a"
   },
   "typography": {
-    "headingFont": "AlimamaShuHeiTi",
-    "bodyFont": "LXGWWenKaiScreen"
+    "headingFont": "PingFang SC",
+    "bodyFont": "Kaiti SC"
   },
   "footerText": "",
   "watermarkText": "",

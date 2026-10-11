@@ -28,13 +28,14 @@ interface ParamsInspectorProps {
 }
 
 const FONT_OPTIONS = [
-  { label: "阿里妈妈数黑体 (厚重醒目)", value: "AlimamaShuHeiTi" },
-  { label: "霞鹜新致宋 (典雅高阶)", value: "LXGWNeoZhiSongPlus" },
-  { label: "霞鹜文楷 (人文随笔)", value: "LXGWWenKaiScreen" },
-  { label: "思源黑体 (现代极简)", value: "SourceHanSansSC, sans-serif" },
-  { label: "思源宋体 (经典报刊)", value: "SourceHanSerifSC, serif" },
-  { label: "Inter / 系统无衬线", value: "Inter, system-ui, sans-serif" },
-  { label: "Georgia 衬线体", value: "Georgia, serif" },
+  { label: "苹方 / 极简黑体 (默认清爽)", value: "PingFang SC" },
+  { label: "思源黑体 (现代极简·粗黑)", value: "Noto Sans SC" },
+  { label: "典雅宋体 (经典报刊·书卷)", value: "Songti SC" },
+  { label: "思源宋体 (高阶报刊·典雅)", value: "Noto Serif SC" },
+  { label: "人文楷体 (温润随笔·手写)", value: "Kaiti SC" },
+  { label: "柔和圆体 (亲和灵动·现代)", value: "Yuanti SC" },
+  { label: "Inter / 国际西文无衬线", value: "Inter" },
+  { label: "Georgia / 文艺西文衬线", value: "Georgia" },
 ];
 
 export const ParamsInspector: React.FC<ParamsInspectorProps> = ({

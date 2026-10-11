@@ -31,6 +31,37 @@ export function calculateLineHeight(fontSizePx: number, userMultiplier = 1.45): 
   return Math.round(fontSizePx * ratio);
 }
 
+/**
+ * Resolves font names to cross-platform font family stacks.
+ */
+export function resolveFontFamilyStack(fontName: string, isSerif: boolean = false): string {
+  const trimmed = (fontName || "").trim();
+  switch (trimmed) {
+    case "PingFang SC":
+      return `"PingFang SC", -apple-system, BlinkMacSystemFont, "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    case "Noto Sans SC":
+      return `"Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif`;
+    case "Songti SC":
+      return `"Songti SC", "Noto Serif SC", "STSong", "SimSun", serif`;
+    case "Noto Serif SC":
+      return `"Noto Serif SC", "Songti SC", "SimSun", serif`;
+    case "Kaiti SC":
+      return `"Kaiti SC", "LXGW WenKai Screen", "STKaiti", "KaiTi", serif`;
+    case "Yuanti SC":
+      return `"Yuanti SC", "STYuanti", "PingFang SC", sans-serif`;
+    case "Inter":
+      return `Inter, "PingFang SC", system-ui, sans-serif`;
+    case "Georgia":
+      return `Georgia, "Songti SC", serif`;
+    default:
+      if (!trimmed) {
+        return isSerif ? '"Songti SC", serif' : '"PingFang SC", sans-serif';
+      }
+      if (trimmed.includes(",")) return trimmed;
+      return `"${trimmed}", ${isSerif ? "serif" : "sans-serif"}`;
+  }
+}
+
 export function computeBlockStyles(params: {
   baseFontSize: number;
   scaleRatio: number;
@@ -50,6 +81,9 @@ export function computeBlockStyles(params: {
 > {
   const { baseFontSize, scaleRatio, lineHeightMultiplier, headingFont, bodyFont } = params;
 
+  const resolvedHeadingFont = resolveFontFamilyStack(headingFont, false);
+  const resolvedBodyFont = resolveFontFamilyStack(bodyFont, true);
+
   // Steps in modular scale:
   // paragraph = 0
   // minor-heading = +1
@@ -64,7 +98,7 @@ export function computeBlockStyles(params: {
 
   return {
     heading: {
-      font: `700 ${h1Size}px ${headingFont}, sans-serif`,
+      font: `700 ${h1Size}px ${resolvedHeadingFont}`,
       fontSize: h1Size,
       lineHeight: calculateLineHeight(h1Size, lineHeightMultiplier * 0.95),
       gapBefore: Math.round(h1Size * 0.8),
@@ -72,7 +106,7 @@ export function computeBlockStyles(params: {
       className: "body-heading",
     },
     subheading: {
-      font: `700 ${h2Size}px ${headingFont}, sans-serif`,
+      font: `700 ${h2Size}px ${resolvedHeadingFont}`,
       fontSize: h2Size,
       lineHeight: calculateLineHeight(h2Size, lineHeightMultiplier * 0.98),
       gapBefore: Math.round(h2Size * 0.7),
@@ -80,7 +114,7 @@ export function computeBlockStyles(params: {
       className: "body-subheading",
     },
     "minor-heading": {
-      font: `700 ${h3Size}px ${headingFont}, sans-serif`,
+      font: `700 ${h3Size}px ${resolvedHeadingFont}`,
       fontSize: h3Size,
       lineHeight: calculateLineHeight(h3Size, lineHeightMultiplier),
       gapBefore: Math.round(h3Size * 0.6),
@@ -88,7 +122,7 @@ export function computeBlockStyles(params: {
       className: "body-minor-heading",
     },
     paragraph: {
-      font: `400 ${pSize}px ${bodyFont}, serif`,
+      font: `400 ${pSize}px ${resolvedBodyFont}`,
       fontSize: pSize,
       lineHeight: calculateLineHeight(pSize, lineHeightMultiplier),
       gapBefore: 0,
@@ -96,7 +130,7 @@ export function computeBlockStyles(params: {
       className: "body-line",
     },
     quote: {
-      font: `400 ${quoteSize}px ${bodyFont}, serif`,
+      font: `400 ${quoteSize}px ${resolvedBodyFont}`,
       fontSize: quoteSize,
       lineHeight: calculateLineHeight(quoteSize, lineHeightMultiplier * 1.05),
       gapBefore: Math.round(quoteSize * 0.5),
@@ -104,7 +138,7 @@ export function computeBlockStyles(params: {
       className: "body-quote",
     },
     "list-item": {
-      font: `400 ${listSize}px ${bodyFont}, serif`,
+      font: `400 ${listSize}px ${resolvedBodyFont}`,
       fontSize: listSize,
       lineHeight: calculateLineHeight(listSize, lineHeightMultiplier),
       gapBefore: 0,

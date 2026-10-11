@@ -28,8 +28,8 @@
     "cardBg": "#18181b"
   },
   "typography": {
-    "headingFont": "AlimamaShuHeiTi",
-    "bodyFont": "LXGWNeoZhiSongPlus"
+    "headingFont": "PingFang SC",
+    "bodyFont": "Songti SC"
   },
   "footerText": "",
   "watermarkText": "",

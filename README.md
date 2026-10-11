@@ -10,7 +10,7 @@
   <a href="#-运行环境与依赖要求"><img src="https://img.shields.io/badge/Runtime-Bun%20%E2%89%A5%201.2-000000.svg?style=flat-square&logo=bun" alt="Bun Runtime"></a>
   <a href="#-运行环境与依赖要求"><img src="https://img.shields.io/badge/Language-TypeScript%205.8-3178C6.svg?style=flat-square&logo=typescript" alt="TypeScript"></a>
   <a href="#-技术栈"><img src="https://img.shields.io/badge/UI-React%2019%20%2B%20Tailwind-61DAFB.svg?style=flat-square&logo=react" alt="React 19"></a>
-  <a href="#-开发与测试"><img src="https://img.shields.io/badge/Tests-24%20Passing%20(100%25)-brightgreen.svg?style=flat-square" alt="Tests Passing"></a>
+  <a href="#-开发与测试"><img src="https://img.shields.io/badge/Tests-26%20Passing%20(100%25)-brightgreen.svg?style=flat-square" alt="Tests Passing"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT License"></a>
 </p>
 
@@ -24,12 +24,12 @@
 
 在内容自动化分发、微信公众号文章与小红书图文制作中，传统的卡片出图方案普遍依赖 **Chrome Headless (Puppeteer / Playwright)**。为了获取最佳排版效果，往往需要在浏览器实例中多次反复渲染、测量高度、试探字号并进行 CDP 通信截屏。这种方式**速度缓慢（单次耗时数秒）、内存占用高、排版结果难以量化微调**。
 
-**Typeset Studio** 采取了完全不同的技术路线：**以确定性纯数学几何排版为核心**。
+**Typeset Studio** 采取了完全不同的技术路线：**以确定性纯数学几何排版与服务端原生渲染为核心**。
 
-- **⚡ 告别试探性重绘**：底层依托 `@chenglou/pretext`（纯数学文本分词测距）与 `@napi-rs/canvas`，在内存中完成 0 次浏览器 Dump 的段落、字阶、行宽切分与目标填充率优化，具备**毫秒级计算性能**与**像素级确定性**。
+- **⚡ 告别试探性重绘与 Chrome 依赖**：底层依托 `@chenglou/pretext`（纯数学文本分词测距）与 `@napi-rs/canvas`（基于 Rust Skia 的原生图形绘制引擎），彻底脱离无头浏览器。从计算到渲染直接输出高清 PNG，具备**毫秒级出图性能**、**系统原生字体支持**与**像素级确定性**。
 - **🧩 双模态运行形态**：
-  1. **独立可视化排版工作台 (Standalone Visual Studio)**：具备类 Vercel 极简黑白美学的 Web 设计器，支持多图瀑布流全景平铺、单图聚焦微调、四大标准出版比例切换与模板持久化。
-  2. **自动化发布流水线插件 (Pipeline Image Renderer Plugin)**：作为标准图像渲染插件，可无缝插拔接入 `zzhub-pipeline` 或任意 CI/CD 内容分发系统，彻底替代笨重的 Chrome 截屏方案。
+  1. **独立可视化排版工作台 (Standalone Visual Studio)**：具备类 Vercel 极简黑白美学的 Web 设计器，支持多图瀑布流全景平铺、单图聚焦微调、四大标准出版比例切换、模板持久化与一键直接服务端渲染高清下载。
+  2. **自动化发布流水线插件 (Pipeline Image Renderer Plugin)**：作为标准图像渲染插件，可无缝插拔接入 `zzhub-pipeline` 或任意 CI/CD 内容分发系统，直接通过原生 Canvas 生成图片，彻底替代笨重的 Chrome 截屏方案。
 
 ---
 
@@ -51,7 +51,7 @@
 - **单图放大聚焦**：配备 `聚焦单图` 按钮与**双击卡片直达**交互，随时平滑放大至单页全屏视口进行局部精修。
 
 ### 4. 📄 手动分页与精准配图归属
-- **语法级分页**：支持在 Markdown 中任意位置插入 `【第二页】` 或 `【Page 2】`。
+- **语法级分页**：支持在 Markdown 中任意位置插入 `【第二页】`、`【Page 2】` 或标准 Markdown 分隔符 `---`。
 - **舞台边界安全保护 (`computeSafePresetY`)**：排版基准 Y 与页内序号严格绑定，杜绝全局 index 累加导致的坐标溢出，所有预设均在可视舞台内安全呈现。
 - **配图所属页面与页内排序**：直观选择配图所属页码，支持页内一键上移/下移图层。
 
@@ -255,13 +255,38 @@ curl -X POST http://localhost:4890/api/render \
   }'
 ```
 
-### 3. 模板槽位查询与管理 (`GET /api/templates/slots`)
+### 3. 服务端原生 Canvas 生成 PNG (`POST /api/render/png`)
+直接返回二进制 raw `image/png` 数据流，单次响应仅数十毫秒，0 浏览器内存开销：
+```bash
+curl -X POST http://localhost:4890/api/render/png \
+  -H "Content-Type: application/json" \
+  -d '{
+    "markdown": "# 纯算法排版实战\n无需设计师介入，自动排版对齐",
+    "ratio": "2.35:1",
+    "themeName": "editorial-warm"
+  }' \
+  --output cover.png
+```
+
+### 4. 批量导出图片 (`POST /api/render/export`)
+批量输出各页 DataURL/Base64 图片，供前端一键打包或无头存储：
+```bash
+curl -X POST http://localhost:4890/api/render/export \
+  -H "Content-Type: application/json" \
+  -d '{
+    "markdown": "# 页面一\n这是第一页\n\n---\n\n# 页面二\n这是第二页",
+    "ratio": "3:4"
+  }'
+# 返回 {"ok": true, "pageCount": 2, "pages": [{ "pageNumber": 1, "dataUrl": "..." }, ...]}
+```
+
+### 5. 模板槽位查询与管理 (`GET /api/templates/slots`)
 ```bash
 curl "http://localhost:4890/api/templates/slots?account=default" \
   -H "X-Admin-Key: <ADMIN_KEY>"
 ```
 
-### 4. 上传素材配图 (`POST /api/upload`)
+### 6. 上传素材配图 (`POST /api/upload`)
 ```bash
 curl -X POST http://localhost:4890/api/upload \
   -H "X-Admin-Key: <ADMIN_KEY>" \
@@ -278,8 +303,10 @@ typeset-studio/
 │   ├── core/                  # 纯算法排版核心（无 DOM 依赖，通用跨端）
 │   │   ├── engine.ts          # runTypeset 排版主入口，协调分词、样式、分段与分页
 │   │   ├── pretext.ts         # Pretext 引擎封装与富文本行宽切分
+│   │   ├── canvas-renderer.ts # @napi-rs/canvas 服务端原生渲染器（免 Chrome 出图）
 │   │   ├── obstacle-flow.ts   # 矩形障碍物碰撞检测与避让流排版算法
 │   │   ├── image-layout.ts    # 预设布局坐标计算 (computeSafePresetY) 与边界保护
+│   │   ├── typography.ts      # 跨平台字体回退映射与多阶字号行高计算
 │   │   ├── template.ts        # 模板持久化应用与数量不匹配时的交集算法
 │   │   ├── geometry.ts        # 4 大标准画布比例几何计算 (2.35:1, 3:4, 16:9, 1:1)
 │   │   └── types.ts           # 完整 TypeScript 类型契约

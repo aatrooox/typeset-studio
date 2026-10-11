@@ -29,8 +29,8 @@
     "borderSubtle": "#e5e5e5"
   },
   "typography": {
-    "headingFont": "AlimamaShuHeiTi",
-    "bodyFont": "LXGWNeoZhiSongPlus"
+    "headingFont": "PingFang SC",
+    "bodyFont": "Songti SC"
   },
   "footerText": "Typeset Studio · 纯算法排版",
   "watermarkText": "@Antigravity",
