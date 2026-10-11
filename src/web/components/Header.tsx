@@ -1,6 +1,5 @@
 import React from "react";
-import { Download, FolderOpen, Key, Layers, RefreshCw, ZoomIn, ZoomOut } from "lucide-react";
-import { CANVAS_SPECS } from "../../core/geometry";
+import { Download, FolderOpen, Key, Moon, RefreshCw, Sun, ZoomIn, ZoomOut } from "lucide-react";
 import { AspectRatioType } from "../../core/types";
 
 interface HeaderProps {
@@ -14,6 +13,8 @@ interface HeaderProps {
   isExporting: boolean;
   isAuthed: boolean;
   pageCount: number;
+  themeMode: "light" | "dark";
+  onToggleThemeMode: () => void;
 }
 
 const RATIO_ITEMS: Array<{ id: AspectRatioType; label: string; ratioTag: string }> = [
@@ -34,26 +35,28 @@ export const Header: React.FC<HeaderProps> = ({
   isExporting,
   isAuthed,
   pageCount,
+  themeMode,
+  onToggleThemeMode,
 }) => {
   return (
-    <header className="h-14 border-b border-[#222222] bg-[#000000]/80 backdrop-blur-md px-4 flex items-center justify-between select-none z-30 shrink-0">
+    <header className="h-14 border-b border-[#eaeaea] dark:border-[#222222] bg-white/80 dark:bg-[#000000]/80 backdrop-blur-md px-4 flex items-center justify-between select-none z-30 shrink-0 transition-colors">
       {/* Brand & Status */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 font-semibold text-white tracking-tight text-sm">
-          <span className="flex items-center justify-center w-6 h-6 rounded bg-white text-black font-black text-xs">
+        <div className="flex items-center gap-2 font-semibold text-[#171717] dark:text-white tracking-tight text-sm">
+          <span className="flex items-center justify-center w-6 h-6 rounded bg-black dark:bg-white text-white dark:text-black font-black text-xs shadow-sm">
             ▲
           </span>
           <span>Typeset Studio</span>
         </div>
-        <span className="text-xs text-[#555555] font-mono hidden md:inline">v0.1.0</span>
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#111111] border border-[#222222] text-[11px] text-[#00e676]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] animate-pulse" />
+        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden md:inline">v0.1.0</span>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#111111] border border-[#e5e5e5] dark:border-[#222222] text-[11px] text-emerald-600 dark:text-[#00e676]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#00e676] animate-pulse" />
           <span className="font-mono">Ready</span>
         </div>
       </div>
 
       {/* Segmented Control - 4 Core Canvas Ratios */}
-      <div className="flex items-center bg-[#0a0a0a] border border-[#222222] rounded-lg p-0.5">
+      <div className="flex items-center bg-[#f5f5f5] dark:bg-[#0a0a0a] border border-[#eaeaea] dark:border-[#222222] rounded-lg p-0.5 shadow-inner">
         {RATIO_ITEMS.map((item) => {
           const isActive = currentRatio === item.id;
           return (
@@ -62,14 +65,16 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onSelectRatio(item.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-[#1f1f1f] text-white shadow-sm font-semibold"
-                  : "text-[#888888] hover:text-[#cccccc] hover:bg-[#141414]"
+                  ? "bg-white dark:bg-[#1f1f1f] text-black dark:text-white shadow-sm font-semibold"
+                  : "text-[#666666] dark:text-[#888888] hover:text-[#171717] dark:hover:text-[#cccccc] hover:bg-[#eaeaea] dark:hover:bg-[#141414]"
               }`}
             >
               <span>{item.label}</span>
               <span
                 className={`text-[10px] font-mono px-1 py-0.2 rounded ${
-                  isActive ? "bg-[#333333] text-white" : "bg-[#181818] text-[#666666]"
+                  isActive
+                    ? "bg-[#eaeaea] dark:bg-[#333333] text-black dark:text-white font-semibold"
+                    : "bg-[#e5e5e5] dark:bg-[#181818] text-[#777777] dark:text-[#666666]"
                 }`}
               >
                 {item.ratioTag}
@@ -82,32 +87,45 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Action Tools */}
       <div className="flex items-center gap-2">
         {/* Zoom controls */}
-        <div className="flex items-center bg-[#0a0a0a] border border-[#222222] rounded-lg p-0.5 text-xs text-[#888888]">
+        <div className="flex items-center bg-[#f5f5f5] dark:bg-[#0a0a0a] border border-[#eaeaea] dark:border-[#222222] rounded-lg p-0.5 text-xs text-[#666666] dark:text-[#888888]">
           <button
             onClick={() => onZoomChange(Math.max(0.2, Number((zoom - 0.1).toFixed(1))))}
-            className="p-1 hover:text-white rounded hover:bg-[#1f1f1f]"
+            className="p-1 hover:text-black dark:hover:text-white rounded hover:bg-[#e8e8e8] dark:hover:bg-[#1f1f1f]"
             title="缩小"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="w-11 text-center font-mono text-[11px] text-[#cccccc]">
+          <span className="w-11 text-center font-mono text-[11px] text-[#333333] dark:text-[#cccccc]">
             {Math.round(zoom * 100)}%
           </span>
           <button
             onClick={() => onZoomChange(Math.min(1.5, Number((zoom + 0.1).toFixed(1))))}
-            className="p-1 hover:text-white rounded hover:bg-[#1f1f1f]"
+            className="p-1 hover:text-black dark:hover:text-white rounded hover:bg-[#e8e8e8] dark:hover:bg-[#1f1f1f]"
             title="放大"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
         </div>
 
+        {/* Theme Mode Toggle (Light / Dark) */}
+        <button
+          onClick={onToggleThemeMode}
+          className="p-2 rounded-lg border border-[#eaeaea] dark:border-[#222222] bg-white dark:bg-[#0a0a0a] hover:bg-[#f5f5f5] dark:hover:bg-[#161616] text-[#444444] dark:text-[#cccccc] transition-all btn-vercel"
+          title={themeMode === "light" ? "切换至深色模式" : "切换至浅色模式"}
+        >
+          {themeMode === "light" ? (
+            <Moon className="w-3.5 h-3.5 text-[#555555]" />
+          ) : (
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
+          )}
+        </button>
+
         {/* Templates Modal button */}
         <button
           onClick={onOpenTemplates}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#222222] bg-[#0a0a0a] hover:bg-[#161616] text-xs text-[#cccccc] hover:text-white transition-all btn-vercel"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#eaeaea] dark:border-[#222222] bg-white dark:bg-[#0a0a0a] hover:bg-[#f5f5f5] dark:hover:bg-[#161616] text-xs text-[#333333] dark:text-[#cccccc] hover:text-black dark:hover:text-white transition-all btn-vercel"
         >
-          <FolderOpen className="w-3.5 h-3.5 text-[#888888]" />
+          <FolderOpen className="w-3.5 h-3.5 text-[#777777] dark:text-[#888888]" />
           <span>模板库</span>
         </button>
 
@@ -115,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onExport}
           disabled={isExporting}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black hover:bg-[#eaeaea] text-xs font-semibold transition-all btn-vercel shadow-sm disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black text-white hover:bg-[#262626] dark:bg-white dark:text-black dark:hover:bg-[#eaeaea] text-xs font-semibold transition-all btn-vercel shadow-sm disabled:opacity-50"
         >
           {isExporting ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -124,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
           <span>导出图片</span>
           {pageCount > 1 && (
-            <span className="text-[10px] bg-black text-white px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] bg-white/20 dark:bg-black text-white px-1.5 py-0.2 rounded font-mono">
               {pageCount}P
             </span>
           )}
@@ -135,8 +153,8 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onOpenAuth}
           className={`p-1.5 rounded-lg border transition-all btn-vercel ${
             isAuthed
-              ? "border-[#222222] bg-[#0a0a0a] text-[#888888] hover:text-white hover:bg-[#161616]"
-              : "border-amber-500/50 bg-amber-500/10 text-amber-400"
+              ? "border-[#eaeaea] dark:border-[#222222] bg-white dark:bg-[#0a0a0a] text-[#777777] dark:text-[#888888] hover:text-black dark:hover:text-white hover:bg-[#f5f5f5] dark:hover:bg-[#161616]"
+              : "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
           }`}
           title={isAuthed ? "超管密钥已就绪" : "配置超管密钥"}
         >

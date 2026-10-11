@@ -2,6 +2,7 @@ import { computeStageDimensions, getCanvasSpec } from "./geometry";
 import { parseContentBlocks, parseInlineRuns, splitTextByPages } from "./inline-text";
 import { paginateBlocks } from "./obstacle-flow";
 import { computeBlockStyles } from "./typography";
+import { resolveImagePlacement } from "./image-layout";
 import {
   ContentBlock,
   FlowBlock,
@@ -37,14 +38,14 @@ export function getDefaultConfig(aspectRatio = "longform-3-4" as TypesetConfig["
       safeArea: spec.defaultSafeArea,
     },
     theme: {
-      bgColor: "#0a0a0a",
-      textColor: "#ededed",
-      accentColor: "#00e676",
-      quoteColor: "#a0a0a0",
-      captionColor: "#888888",
-      watermarkColor: "#555555",
-      cardBg: "#121212",
-      borderSubtle: "#262626",
+      bgColor: "#ffffff",
+      textColor: "#171717",
+      accentColor: "#059669",
+      quoteColor: "#525252",
+      captionColor: "#737373",
+      watermarkColor: "#a3a3a3",
+      cardBg: "#f5f5f5",
+      borderSubtle: "#e5e5e5",
     },
     typography: {
       headingFont: "AlimamaShuHeiTi",
@@ -105,7 +106,9 @@ export function runTypeset(params: {
       const firstSubPage = subPages[0] ?? {
         pageNumber: pageNum,
         lines: [],
-        images: pageImages,
+        images: pageImages.map((img, idx) =>
+          resolveImagePlacement(img, idx, stageWidth, stageHeight),
+        ),
         textBottom: 0,
         fillRatio: 0,
       };
@@ -140,7 +143,9 @@ export function runTypeset(params: {
       {
         pageNumber: 1,
         lines: [],
-        images,
+        images: images.map((img, idx) =>
+          resolveImagePlacement(img, idx, stageWidth, stageHeight),
+        ),
         textBottom: 0,
         fillRatio: 0,
       },

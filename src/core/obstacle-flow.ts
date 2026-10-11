@@ -5,7 +5,8 @@ import {
   prepareRichInline,
   type RichInlineCursor,
 } from "./pretext";
-import { FlowBlock, FlowImage, FlowLine, FlowPage, InlineTextRun } from "./types";
+import { FlowBlock, FlowImage, FlowLine, FlowPage, InlineTextRun, ResolvedFlowImage } from "./types";
+import { resolveImagePlacement } from "./image-layout";
 
 const START: RichInlineCursor = { itemIndex: 0, segmentIndex: 0, graphemeIndex: 0 };
 
@@ -65,7 +66,7 @@ export function paginateBlocks(
     block: PreparedBlock,
     cursor: RichInlineCursor,
     initialY: number,
-    images: FlowImage[],
+    images: ResolvedFlowImage[],
     limit = Infinity,
   ) {
     const lines: PlacedLine[] = [];
@@ -190,12 +191,14 @@ export function paginateBlocks(
     const pageNum = pages.length + 1;
     // Assign images for this page (either explicitly tagged with pageIndex === pageNum or sliced by limit)
     const pageExplicitImages = allImages.filter((img) => img.pageIndex === pageNum);
-    const pageAutoImages =
+    const targetImages =
       pageExplicitImages.length > 0
         ? pageExplicitImages
         : allImages.filter((img) => !img.pageIndex).slice(imageIndex, imageIndex + imageLimit);
 
-    const images = pageAutoImages;
+    const images = targetImages.map((img, idx) =>
+      resolveImagePlacement(img, idx, stageWidth, stageHeight),
+    );
     const lines: FlowLine[] = [];
     let y = 0;
 
@@ -280,7 +283,7 @@ export function paginateBlocks(
     });
 
     if (!pageExplicitImages.length) {
-      imageIndex += pageAutoImages.length;
+      imageIndex += targetImages.length;
     }
   }
 

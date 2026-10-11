@@ -20,11 +20,11 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
   return (
     <main
       ref={viewportRef}
-      className="flex-1 min-w-0 overflow-auto bg-[#050505] bg-grid flex flex-col p-8 select-none relative"
+      className="flex-1 min-w-0 overflow-auto bg-[#f5f5f5] dark:bg-[#050505] bg-grid flex flex-col p-8 select-none relative transition-colors"
     >
       {/* Canvas Meta Info Pill */}
-      <div className="sticky top-0 z-20 self-center mb-6 px-3 py-1 rounded-full bg-[#111111]/90 backdrop-blur border border-[#222222] text-[11px] font-mono text-[#888888] flex items-center gap-2 shadow-lg">
-        <span className="text-white font-semibold">{canvasSpec.name}</span>
+      <div className="sticky top-0 z-20 self-center mb-6 px-3 py-1 rounded-full bg-white/90 dark:bg-[#111111]/90 backdrop-blur border border-[#eaeaea] dark:border-[#222222] text-[11px] font-mono text-[#666666] dark:text-[#888888] flex items-center gap-2 shadow-sm">
+        <span className="text-[#171717] dark:text-white font-semibold">{canvasSpec.name}</span>
         <span>•</span>
         <span>
           {canvasSpec.width} × {canvasSpec.height}px
@@ -39,7 +39,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
           return (
             <div
               key={page.pageNumber}
-              className="relative shrink-0 shadow-2xl"
+              className="relative shrink-0 shadow-xl dark:shadow-2xl rounded-sm"
               style={{
                 width: canvasSpec.width * zoom,
                 height: canvasSpec.height * zoom,
@@ -48,7 +48,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
               {/* Scaled Page Container */}
               <div
                 id={`typeset-page-${page.pageNumber}`}
-                className="typeset-page absolute top-0 left-0 overflow-hidden border border-[#222222]"
+                className="typeset-page absolute top-0 left-0 overflow-hidden border border-[#e0e0e0] dark:border-[#222222]"
                 style={{
                   width: canvasSpec.width,
                   height: canvasSpec.height,
@@ -78,7 +78,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                     {config.watermarkText}
                   </span>
                   <span
-                    className="font-mono text-xs px-2 py-0.5 rounded-full border border-white/10 opacity-60"
+                    className="font-mono text-xs px-2 py-0.5 rounded-full border border-current opacity-40"
                     style={{ color: theme.textColor }}
                   >
                     P.{String(page.pageNumber).padStart(2, "0")}
@@ -101,7 +101,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                       <img
                         src={img.src}
                         alt={img.alt}
-                        className="absolute object-cover rounded-xl shadow-lg transition-transform"
+                        className="absolute object-cover rounded-xl shadow-md transition-all duration-300 ease-out"
                         style={{
                           left: img.x,
                           top: img.y,
@@ -112,7 +112,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                       />
                       {img.caption && (
                         <div
-                          className="absolute text-center truncate px-2"
+                          className="absolute text-center truncate px-2 transition-all duration-300 ease-out"
                           style={{
                             left: img.x,
                             top: img.y + img.height + 8,
@@ -193,7 +193,8 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                     bottom: Math.max(24, Math.floor(algorithm.safeArea.bottom * 0.4)),
                     right: algorithm.safeArea.right,
                     height: 36,
-                    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderTop: "1px solid currentColor",
+                    opacity: 0.8,
                     paddingTop: 8,
                   }}
                 >
@@ -205,7 +206,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ result, zoom, vi
                   </span>
 
                   <span
-                    className="text-[11px] font-mono px-2 py-0.5 rounded opacity-40"
+                    className="text-[11px] font-mono px-2 py-0.5 rounded opacity-50"
                     style={{ color: theme.watermarkColor }}
                   >
                     填充率 {Math.round(page.fillRatio * 100)}%

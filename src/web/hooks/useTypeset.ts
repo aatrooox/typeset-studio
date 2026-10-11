@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { getDefaultConfig, runTypeset } from "../../core/engine";
+import { computeStageDimensions, getCanvasSpec } from "../../core/geometry";
+import { resolveImagePlacement } from "../../core/image-layout";
 import {
   AlgorithmParams,
   AspectRatioType,
@@ -34,12 +36,12 @@ export function useTypeset() {
       src: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
       alt: "抽象建筑线条",
       caption: "图 1：建筑结构中的空间秩序感",
-      x: 36,
+      x: 16,
       y: 420,
       width: 420,
       height: 280,
       captionHeight: 40,
-      layoutPreset: "auto",
+      layoutPreset: "mid-left",
     },
   ]);
   const [highlightWords, setHighlightWords] = useState<string[]>(["算法排版", "确定性", "空间秩序"]);
@@ -56,8 +58,29 @@ export function useTypeset() {
 
   const switchAspectRatio = (ratio: AspectRatioType) => {
     setAspectRatio(ratio);
+    const spec = getCanvasSpec(ratio);
+    const nextDefault = getDefaultConfig(ratio);
+    const { stageWidth, stageHeight } = computeStageDimensions(
+      spec,
+      nextDefault.algorithm.safeArea,
+      nextDefault.algorithm.contentBottomGap,
+    );
+    setImages((prev) =>
+      prev.map((img, idx) => {
+        if (img.layoutPreset && img.layoutPreset !== "custom") {
+          const resolved = resolveImagePlacement(img, idx, stageWidth, stageHeight);
+          return {
+            ...img,
+            x: resolved.x,
+            y: resolved.y,
+            width: resolved.width,
+            height: resolved.height,
+          };
+        }
+        return img;
+      }),
+    );
     setConfig((prev) => {
-      const nextDefault = getDefaultConfig(ratio);
       return {
         ...prev,
         aspectRatio: ratio,
@@ -95,16 +118,51 @@ export function useTypeset() {
   };
 
   const addImage = (image: Omit<FlowImage, "id">) => {
-    const newImage: FlowImage = {
+    const spec = getCanvasSpec(aspectRatio);
+    const { stageWidth, stageHeight } = computeStageDimensions(
+      spec,
+      config.algorithm.safeArea,
+      config.algorithm.contentBottomGap,
+    );
+    const temp: FlowImage = {
       ...image,
       id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    };
+    const resolved = resolveImagePlacement(temp, images.length, stageWidth, stageHeight);
+    const newImage: FlowImage = {
+      ...temp,
+      x: resolved.x,
+      y: resolved.y,
+      width: resolved.width,
+      height: resolved.height,
     };
     setImages((prev) => [...prev, newImage]);
   };
 
   const updateImage = (id: string, partial: Partial<FlowImage>) => {
     setImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, ...partial } : img)),
+      prev.map((img, idx) => {
+        if (img.id !== id) return img;
+        const merged: FlowImage = { ...img, ...partial };
+        // If layoutPreset changed (and is not custom), sync coordinates immediately
+        if (merged.layoutPreset && merged.layoutPreset !== "custom") {
+          const spec = getCanvasSpec(aspectRatio);
+          const { stageWidth, stageHeight } = computeStageDimensions(
+            spec,
+            config.algorithm.safeArea,
+            config.algorithm.contentBottomGap,
+          );
+          const resolved = resolveImagePlacement(merged, idx, stageWidth, stageHeight);
+          return {
+            ...merged,
+            x: resolved.x,
+            y: resolved.y,
+            width: resolved.width,
+            height: resolved.height,
+          };
+        }
+        return merged;
+      }),
     );
   };
 

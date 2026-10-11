@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { AuthModal } from "./components/AuthModal";
 import { CanvasViewport } from "./components/CanvasViewport";
@@ -31,6 +31,24 @@ export const App: React.FC = () => {
   } = useTypeset();
 
   const { adminKey, setAdminKey, isVerified } = useAuth();
+
+  // Default to Light Mode per user requirement
+  const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
+    return (localStorage.getItem("typeset_studio_theme_mode") as "light" | "dark") || "light";
+  });
+
+  useEffect(() => {
+    if (themeMode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("typeset_studio_theme_mode", themeMode);
+  }, [themeMode]);
+
+  const toggleThemeMode = () => {
+    setThemeMode((prev) => (prev === "light" ? "dark" : "light"));
+  };
 
   const [zoom, setZoom] = useState<number>(0.45);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -72,7 +90,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#000000] text-[#ededed]">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#fafafa] dark:bg-[#000000] text-[#171717] dark:text-[#ededed] transition-colors">
       {/* Top Header */}
       <Header
         currentRatio={aspectRatio}
@@ -85,6 +103,8 @@ export const App: React.FC = () => {
         isExporting={isExporting}
         isAuthed={Boolean(isVerified)}
         pageCount={result.pageCount}
+        themeMode={themeMode}
+        onToggleThemeMode={toggleThemeMode}
       />
 
       {/* Main Workspace (3-column layout) */}

@@ -55,12 +55,12 @@ export interface FlowImage {
   src: string;
   alt: string;
   caption?: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   captionHeight?: number;
-  layoutPreset?: "auto" | "fill" | "staggered" | "mid-left" | "mid-right" | "corner-soft";
+  layoutPreset?: "auto" | "fill" | "staggered" | "mid-left" | "mid-right" | "center" | "corner-soft" | "custom";
   pageIndex?: number; // 1-indexed, for explicit page placement
 }
 
@@ -87,10 +87,17 @@ export interface FlowLine {
   bulletX?: number;
 }
 
+export type ResolvedFlowImage = FlowImage & {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export interface FlowPage {
   pageNumber: number;
   lines: FlowLine[];
-  images: FlowImage[];
+  images: ResolvedFlowImage[];
   textBottom: number;
   fillRatio: number;
 }
