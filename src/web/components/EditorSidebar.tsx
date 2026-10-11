@@ -11,6 +11,8 @@ import {
   Layers,
   Sparkles,
   RotateCw,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { FlowImage } from "../../core/types";
 
@@ -21,6 +23,8 @@ interface EditorSidebarProps {
   onAddImage: (img: Omit<FlowImage, "id">) => void;
   onUpdateImage: (id: string, partial: Partial<FlowImage>) => void;
   onRemoveImage: (id: string) => void;
+  onMoveImage?: (id: string, direction: "up" | "down") => void;
+  pageCount?: number;
   highlightWords: string[];
   onHighlightWordsChange: (words: string[]) => void;
   adminKey: string;
@@ -33,6 +37,8 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
   onAddImage,
   onUpdateImage,
   onRemoveImage,
+  onMoveImage,
+  pageCount = 1,
   highlightWords,
   onHighlightWordsChange,
   adminKey,
@@ -286,20 +292,46 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                       className="w-12 h-12 object-cover rounded bg-[#eeeeee] dark:bg-[#1a1a1a] border border-[#e5e5e5] dark:border-[#262626] shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-[#171717] dark:text-white truncate">
-                        {img.caption || img.alt || `配图 #${idx + 1}`}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] px-1 rounded bg-[#eaeaea] dark:bg-[#262626] font-mono text-[#555555] dark:text-[#aaaaaa] font-semibold shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <span className="text-xs font-medium text-[#171717] dark:text-white truncate max-w-[120px]">
+                          {img.caption || img.alt || `配图 #${idx + 1}`}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium shrink-0">
+                          第 {img.pageIndex || 1} 页
+                        </span>
                       </div>
                       <div className="text-[10px] text-[#888888] dark:text-[#666666] font-mono mt-0.5">
                         {img.width} × {img.height}px · X: {img.x ?? 0}, Y: {img.y ?? 0}
                       </div>
                     </div>
-                    <button
-                      onClick={() => onRemoveImage(img.id)}
-                      className="p-1 text-[#888888] hover:text-red-500 rounded hover:bg-[#eeeeee] dark:hover:bg-[#1f1f1f]"
-                      title="删除该图"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => onMoveImage?.(img.id, "up")}
+                        disabled={idx === 0}
+                        className="p-1 text-[#888888] hover:text-black dark:hover:text-white disabled:opacity-20 rounded hover:bg-[#eeeeee] dark:hover:bg-[#1f1f1f]"
+                        title="上移顺序 (调整在同一页中的先后次序)"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onMoveImage?.(img.id, "down")}
+                        disabled={idx === images.length - 1}
+                        className="p-1 text-[#888888] hover:text-black dark:hover:text-white disabled:opacity-20 rounded hover:bg-[#eeeeee] dark:hover:bg-[#1f1f1f]"
+                        title="下移顺序 (调整在同一页中的先后次序)"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onRemoveImage(img.id)}
+                        className="p-1 text-[#888888] hover:text-red-500 rounded hover:bg-[#eeeeee] dark:hover:bg-[#1f1f1f]"
+                        title="删除该图"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Mode Selector: Flow vs Absolute */}
@@ -318,6 +350,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                       onClick={() =>
                         onUpdateImage(img.id, {
                           isAbsolute: true,
+                          layoutPreset: "custom",
                           zIndex: img.zIndex ?? 15,
                           rotate: img.rotate ?? 0,
                           opacity: img.opacity ?? 1,
@@ -358,19 +391,22 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                         </div>
 
                         <div>
-                          <span className="text-[#666666] block mb-1">指定所属页</span>
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="自动流动"
-                            value={img.pageIndex || ""}
+                          <span className="text-[#666666] block mb-1">所属页面</span>
+                          <select
+                            value={img.pageIndex || 1}
                             onChange={(e) =>
                               onUpdateImage(img.id, {
-                                pageIndex: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                                pageIndex: parseInt(e.target.value, 10) || 1,
                               })
                             }
-                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
-                          />
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] focus:outline-none"
+                          >
+                            {Array.from({ length: Math.max(pageCount, 2) }, (_, i) => i + 1).map((p) => (
+                              <option key={p} value={p}>
+                                第 {p} 页 {p === 1 ? "(首页/封面)" : ""}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
@@ -418,6 +454,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                             onChange={(e) =>
                               onUpdateImage(img.id, {
                                 y: parseInt(e.target.value, 10) || 0,
+                                layoutPreset: "custom",
                               })
                             }
                             className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
@@ -459,8 +496,27 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                         <span>自由定位图层：脱离文本流，不触发障碍物绕排</span>
                       </div>
 
-                      {/* Z-Index & Rotation */}
+                      {/* Page and Z-Index */}
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-[#666666] block mb-1">所属页面</span>
+                          <select
+                            value={img.pageIndex || 1}
+                            onChange={(e) =>
+                              onUpdateImage(img.id, {
+                                pageIndex: parseInt(e.target.value, 10) || 1,
+                              })
+                            }
+                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] focus:outline-none"
+                          >
+                            {Array.from({ length: Math.max(pageCount, 2) }, (_, i) => i + 1).map((p) => (
+                              <option key={p} value={p}>
+                                第 {p} 页 {p === 1 ? "(首页/封面)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
                         <div>
                           <div className="flex justify-between text-[#666666] mb-1">
                             <span>层级 (Z-Index)</span>
@@ -489,7 +545,10 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                             ))}
                           </div>
                         </div>
+                      </div>
 
+                      {/* Rotation and Opacity */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div>
                           <div className="flex justify-between text-[#666666] mb-1">
                             <span className="flex items-center gap-0.5">
@@ -511,10 +570,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                             className="w-full h-1.5 bg-[#e5e5e5] dark:bg-[#222222] rounded cursor-pointer mt-1"
                           />
                         </div>
-                      </div>
 
-                      {/* Opacity & Border Radius */}
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div>
                           <div className="flex justify-between text-[#666666] mb-1">
                             <span>不透明度</span>
@@ -534,22 +590,23 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                             className="w-full h-1.5 bg-[#e5e5e5] dark:bg-[#222222] rounded cursor-pointer mt-1"
                           />
                         </div>
+                      </div>
 
-                        <div>
-                          <span className="text-[#666666] block mb-1">圆角半径 (px)</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="4"
-                            value={img.borderRadius ?? 12}
-                            onChange={(e) =>
-                              onUpdateImage(img.id, {
-                                borderRadius: parseInt(e.target.value, 10) || 0,
-                              })
-                            }
-                            className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
-                          />
-                        </div>
+                      {/* Border Radius */}
+                      <div className="text-[11px]">
+                        <span className="text-[#666666] block mb-1">圆角半径 (px)</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="4"
+                          value={img.borderRadius ?? 12}
+                          onChange={(e) =>
+                            onUpdateImage(img.id, {
+                              borderRadius: parseInt(e.target.value, 10) || 0,
+                            })
+                          }
+                          className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] font-mono focus:outline-none"
+                        />
                       </div>
 
                       {/* Precise Size & Position */}

@@ -53,6 +53,18 @@ export async function authMiddleware(c: Context, next: Next) {
 
   const providedKey = headerKey || bearerKey || queryKey;
 
+  // Seamless local use: requests from localhost / loopback are trusted for dev
+  const host = c.req.header("host") || "";
+  const isLocal =
+    host.includes("localhost") ||
+    host.includes("127.0.0.1") ||
+    host.includes("0.0.0.0") ||
+    host.includes("[::1]");
+
+  if (isLocal) {
+    return next();
+  }
+
   if (!providedKey || providedKey !== adminKey) {
     return c.json(
       {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, FolderOpen, Key, Moon, RefreshCw, Sun, ZoomIn, ZoomOut } from "lucide-react";
+import { Download, FolderOpen, Key, Maximize2, Moon, RefreshCw, Sun, ZoomIn, ZoomOut } from "lucide-react";
 import { AspectRatioType } from "../../core/types";
 
 interface HeaderProps {
@@ -7,6 +7,8 @@ interface HeaderProps {
   onSelectRatio: (ratio: AspectRatioType) => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  onAutoFit?: () => void;
+  isAutoFit?: boolean;
   onOpenTemplates: () => void;
   onOpenAuth: () => void;
   onExport: () => void;
@@ -29,6 +31,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectRatio,
   zoom,
   onZoomChange,
+  onAutoFit,
+  isAutoFit,
   onOpenTemplates,
   onOpenAuth,
   onExport,
@@ -89,22 +93,44 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Zoom controls */}
         <div className="flex items-center bg-[#f5f5f5] dark:bg-[#0a0a0a] border border-[#eaeaea] dark:border-[#222222] rounded-lg p-0.5 text-xs text-[#666666] dark:text-[#888888]">
           <button
-            onClick={() => onZoomChange(Math.max(0.2, Number((zoom - 0.1).toFixed(1))))}
+            onClick={() => onZoomChange(Math.max(0.2, Number((zoom - 0.05).toFixed(2))))}
             className="p-1 hover:text-black dark:hover:text-white rounded hover:bg-[#e8e8e8] dark:hover:bg-[#1f1f1f]"
             title="缩小"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="w-11 text-center font-mono text-[11px] text-[#333333] dark:text-[#cccccc]">
+          <span
+            onDoubleClick={onAutoFit}
+            className="w-11 text-center font-mono text-[11px] text-[#333333] dark:text-[#cccccc] cursor-pointer hover:underline select-none"
+            title="双击恢复自适应"
+          >
             {Math.round(zoom * 100)}%
           </span>
           <button
-            onClick={() => onZoomChange(Math.min(1.5, Number((zoom + 0.1).toFixed(1))))}
+            onClick={() => onZoomChange(Math.min(1.5, Number((zoom + 0.05).toFixed(2))))}
             className="p-1 hover:text-black dark:hover:text-white rounded hover:bg-[#e8e8e8] dark:hover:bg-[#1f1f1f]"
             title="放大"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
+
+          {onAutoFit && (
+            <>
+              <div className="w-[1px] h-3 bg-[#e0e0e0] dark:bg-[#262626] mx-0.5" />
+              <button
+                onClick={onAutoFit}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-all ${
+                  isAutoFit
+                    ? "bg-white dark:bg-[#1f1f1f] text-black dark:text-white shadow-xs font-semibold"
+                    : "hover:text-black dark:hover:text-white hover:bg-[#e8e8e8] dark:hover:bg-[#1f1f1f]"
+                }`}
+                title={pageCount > 1 ? "缩放至视口内完整排列多张图片（瀑布流平铺）" : "自适应画布大小"}
+              >
+                <Maximize2 className="w-3 h-3" />
+                <span>{pageCount > 1 ? "多图平铺" : "自适应"}</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Theme Mode Toggle (Light / Dark) */}

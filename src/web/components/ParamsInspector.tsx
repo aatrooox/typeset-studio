@@ -10,7 +10,12 @@ import {
   AlignRight,
   ArrowUpDown,
 } from "lucide-react";
-import { AlgorithmParams, ThemeColors, TypesetConfig } from "../../core/types";
+import {
+  AlgorithmParams,
+  ThemeColors,
+  TypesetChromeConfig,
+  TypesetConfig,
+} from "../../core/types";
 
 interface ParamsInspectorProps {
   config: TypesetConfig;
@@ -19,6 +24,7 @@ interface ParamsInspectorProps {
   onUpdateTypography: (partial: Partial<TypesetConfig["typography"]>) => void;
   onUpdateSafeArea: (partial: Partial<AlgorithmParams["safeArea"]>) => void;
   onUpdateBranding: (footer: string, watermark: string) => void;
+  onUpdateChrome: (partial: Partial<TypesetChromeConfig>) => void;
 }
 
 const FONT_OPTIONS = [
@@ -38,6 +44,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
   onUpdateTypography,
   onUpdateSafeArea,
   onUpdateBranding,
+  onUpdateChrome,
 }) => {
   const { algorithm, theme, typography } = config;
 
@@ -438,36 +445,139 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
         </div>
       </div>
 
-      {/* Section 6: Branding & Watermarks */}
+      {/* Section 6: Header, Footer & Chrome Decor */}
       <div className="p-3.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#171717] dark:text-white mb-3">
           <Bookmark className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-          <span>页脚与水印标注</span>
+          <span>页眉页脚与版式装饰 (Chrome)</span>
         </div>
 
-        <div className="flex flex-col gap-2.5 text-xs">
-          <div>
-            <span className="text-[#777777] dark:text-[#666666] text-[11px] block mb-1">
-              页脚版权/署名
-            </span>
-            <input
-              type="text"
-              value={config.footerText}
-              onChange={(e) => onUpdateBranding(e.target.value, config.watermarkText)}
-              className="w-full bg-[#fafafa] dark:bg-[#141414] border border-[#d4d4d4] dark:border-[#262626] rounded px-2.5 py-1.5 text-black dark:text-white text-xs"
-            />
+        <div className="flex flex-col gap-3 text-xs">
+          {/* Header Controls */}
+          <div className="bg-[#f9f9f9] dark:bg-[#141414] p-2.5 rounded-lg border border-[#eaeaea] dark:border-[#222222] flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[#333333] dark:text-[#cccccc] text-[11px]">
+                顶部栏 (Header)
+              </span>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.chrome?.showHeader ?? Boolean(config.watermarkText?.trim())}
+                  onChange={(e) => onUpdateChrome({ showHeader: e.target.checked })}
+                  className="rounded text-emerald-500 accent-emerald-500 cursor-pointer"
+                />
+                <span className="text-[10px] text-[#666666] dark:text-[#888888]">启用</span>
+              </label>
+            </div>
+
+            {(config.chrome?.showHeader ?? Boolean(config.watermarkText?.trim())) && (
+              <div className="flex flex-col gap-2 pl-2 border-l-2 border-[#e0e0e0] dark:border-[#2a2a2a] mt-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[#777777] dark:text-[#888888] text-[10px]">水印 / 品牌标识</span>
+                    <label className="flex items-center gap-1 text-[10px] text-[#666666] dark:text-[#888888] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.chrome?.showWatermark ?? true}
+                        onChange={(e) => onUpdateChrome({ showWatermark: e.target.checked })}
+                        className="rounded accent-emerald-500 cursor-pointer"
+                      />
+                      <span>显示</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={config.watermarkText}
+                    onChange={(e) => onUpdateBranding(config.footerText, e.target.value)}
+                    placeholder="作者水印/标识文本..."
+                    className="w-full bg-white dark:bg-[#0a0a0a] border border-[#d4d4d4] dark:border-[#262626] rounded px-2 py-1 text-black dark:text-white text-[11px]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[#777777] dark:text-[#888888] text-[10px]">页码角标 (P.01)</span>
+                  <label className="flex items-center gap-1 text-[10px] text-[#666666] dark:text-[#888888] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.chrome?.showPageNumber ?? (config.aspectRatio === "longform-3-4")}
+                      onChange={(e) => onUpdateChrome({ showPageNumber: e.target.checked })}
+                      className="rounded accent-emerald-500 cursor-pointer"
+                    />
+                    <span>显示</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div>
-            <span className="text-[#777777] dark:text-[#666666] text-[11px] block mb-1">
-              作者水印
-            </span>
-            <input
-              type="text"
-              value={config.watermarkText}
-              onChange={(e) => onUpdateBranding(config.footerText, e.target.value)}
-              className="w-full bg-[#fafafa] dark:bg-[#141414] border border-[#d4d4d4] dark:border-[#262626] rounded px-2.5 py-1.5 text-black dark:text-white text-xs"
-            />
+          {/* Footer Controls */}
+          <div className="bg-[#f9f9f9] dark:bg-[#141414] p-2.5 rounded-lg border border-[#eaeaea] dark:border-[#222222] flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-[#333333] dark:text-[#cccccc] text-[11px]">
+                底部栏 (Footer)
+              </span>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.chrome?.showFooter ?? Boolean(config.footerText?.trim())}
+                  onChange={(e) => onUpdateChrome({ showFooter: e.target.checked })}
+                  className="rounded text-emerald-500 accent-emerald-500 cursor-pointer"
+                />
+                <span className="text-[10px] text-[#666666] dark:text-[#888888]">启用</span>
+              </label>
+            </div>
+
+            {(config.chrome?.showFooter ?? Boolean(config.footerText?.trim())) && (
+              <div className="flex flex-col gap-2 pl-2 border-l-2 border-[#e0e0e0] dark:border-[#2a2a2a] mt-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[#777777] dark:text-[#888888] text-[10px]">页脚署名 / 版权</span>
+                    <label className="flex items-center gap-1 text-[10px] text-[#666666] dark:text-[#888888] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={config.chrome?.showFooterText ?? true}
+                        onChange={(e) => onUpdateChrome({ showFooterText: e.target.checked })}
+                        className="rounded accent-emerald-500 cursor-pointer"
+                      />
+                      <span>显示</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={config.footerText}
+                    onChange={(e) => onUpdateBranding(e.target.value, config.watermarkText)}
+                    placeholder="页脚版权/署名..."
+                    className="w-full bg-white dark:bg-[#0a0a0a] border border-[#d4d4d4] dark:border-[#262626] rounded px-2 py-1 text-black dark:text-white text-[11px]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[#777777] dark:text-[#888888] text-[10px]">顶部分割细线</span>
+                  <label className="flex items-center gap-1 text-[10px] text-[#666666] dark:text-[#888888] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.chrome?.showFooterDivider ?? Boolean(config.footerText?.trim())}
+                      onChange={(e) => onUpdateChrome({ showFooterDivider: e.target.checked })}
+                      className="rounded accent-emerald-500 cursor-pointer"
+                    />
+                    <span>显示</span>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[#777777] dark:text-[#888888] text-[10px]">算法填充率提示</span>
+                  <label className="flex items-center gap-1 text-[10px] text-[#666666] dark:text-[#888888] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.chrome?.showFillRatio ?? false}
+                      onChange={(e) => onUpdateChrome({ showFillRatio: e.target.checked })}
+                      className="rounded accent-emerald-500 cursor-pointer"
+                    />
+                    <span>显示</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

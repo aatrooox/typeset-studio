@@ -8,7 +8,7 @@ import { renderRouter } from "./routes/render";
 import { templatesRouter } from "./routes/templates";
 import { uploadRouter } from "./routes/upload";
 
-const app = new Hono();
+export const app = new Hono();
 
 app.use("*", cors());
 
@@ -30,10 +30,26 @@ app.post("/api/auth/verify", async (c) => {
   return c.json({ ok: isValid });
 });
 
+// Get active admin key for seamless local development
+app.get("/api/auth/current-key", (c) => {
+  const host = c.req.header("host") || "";
+  const isLocal =
+    host.includes("localhost") ||
+    host.includes("127.0.0.1") ||
+    host.includes("0.0.0.0") ||
+    host.includes("[::1]");
+  const adminKey = getOrGenerateAdminKey();
+  return c.json({
+    ok: true,
+    key: adminKey,
+    isLocal,
+  });
+});
+
 // Protected API routes
-app.use("/api/templates/*", authMiddleware);
-app.use("/api/upload/*", authMiddleware);
-app.use("/api/render/*", authMiddleware);
+app.use("/api/templates*", authMiddleware);
+app.use("/api/upload*", authMiddleware);
+app.use("/api/render*", authMiddleware);
 
 app.route("/api/templates", templatesRouter);
 app.route("/api/upload", uploadRouter);

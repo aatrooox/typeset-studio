@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getDefaultConfig, runTypeset } from "../../core/engine";
 import { computeStageDimensions, getCanvasSpec } from "../../core/geometry";
 import { resolveImagePlacement } from "../../core/image-layout";
+import { applyTemplateImages } from "../../core/template";
 import {
   AlgorithmParams,
   AspectRatioType,
@@ -56,6 +57,65 @@ export function useTypeset() {
     });
   }, [markdown, images, config, highlightWords]);
 
+  useEffect(() => {
+    const initFromUrlAndDefaults = async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const urlTemplate = params.get("template") || params.get("templateId") || params.get("templateKey");
+        const urlSlot = params.get("slot");
+        const urlAccount = params.get("account") || "default";
+        const urlTitle = params.get("title");
+        const urlMarkdown = params.get("markdown") || params.get("text");
+
+        // Handle title or markdown if passed
+        if (urlMarkdown) {
+          setMarkdown(urlMarkdown);
+        } else if (urlTitle) {
+          setMarkdown(`# ${urlTitle}\n\n在此输入正文内容...`);
+        }
+
+        // 1. Handle explicit template loading
+        if (urlTemplate) {
+          const res = await fetch(`/api/templates/resolve/${encodeURIComponent(urlTemplate)}`);
+          const data = await res.json();
+          if (data.ok && data.template) {
+            loadTemplate(data.template);
+            return;
+          }
+        }
+
+        // 2. Handle slot loading
+        if (urlSlot) {
+          const res = await fetch(`/api/templates/slots?account=${encodeURIComponent(urlAccount)}`);
+          const data = await res.json();
+          if (data.ok && data.slots?.[urlSlot]?.template) {
+            loadTemplate(data.slots[urlSlot].template);
+            return;
+          }
+        }
+
+        // 3. If no template or slot in URL, check slot defaults or global default
+        const res = await fetch(`/api/templates/slots?account=${encodeURIComponent(urlAccount)}`);
+        const data = await res.json();
+        if (data.ok && data.slots?.newspic_content?.template) {
+          loadTemplate(data.slots.newspic_content.template);
+          return;
+        }
+
+        // 4. Fallback default
+        const defRes = await fetch("/api/templates/default");
+        const defData = await defRes.json();
+        if (defData.ok && defData.template) {
+          loadTemplate(defData.template);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    initFromUrlAndDefaults();
+  }, []);
+
   const switchAspectRatio = (ratio: AspectRatioType) => {
     setAspectRatio(ratio);
     const spec = getCanvasSpec(ratio);
@@ -66,9 +126,12 @@ export function useTypeset() {
       nextDefault.algorithm.contentBottomGap,
     );
     setImages((prev) =>
-      prev.map((img, idx) => {
-        if (img.layoutPreset && img.layoutPreset !== "custom") {
-          const resolved = resolveImagePlacement(img, idx, stageWidth, stageHeight);
+      prev.map((img) => {
+        if (!img.isAbsolute && img.layoutPreset && img.layoutPreset !== "custom") {
+          const page = img.pageIndex || 1;
+          const samePageList = prev.filter((im) => (im.pageIndex || 1) === page);
+          const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === img.id));
+          const resolved = resolveImagePlacement(img, indexOnPage, stageWidth, stageHeight);
           return {
             ...img,
             x: resolved.x,
@@ -124,11 +187,15 @@ export function useTypeset() {
       config.algorithm.safeArea,
       config.algorithm.contentBottomGap,
     );
+    const targetPage = image.pageIndex || 1;
+    const samePageImages = images.filter((im) => (im.pageIndex || 1) === targetPage);
+    const indexOnPage = samePageImages.length;
+
     const temp: FlowImage = {
       ...image,
       id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     };
-    const resolved = resolveImagePlacement(temp, images.length, stageWidth, stageHeight);
+    const resolved = resolveImagePlacement(temp, indexOnPage, stageWidth, stageHeight);
     const newImage: FlowImage = {
       ...temp,
       x: resolved.x,
@@ -140,39 +207,124 @@ export function useTypeset() {
   };
 
   const updateImage = (id: string, partial: Partial<FlowImage>) => {
-    setImages((prev) =>
-      prev.map((img, idx) => {
+    setImages((prev) => {
+      const nextImages = prev.map((img) => {
         if (img.id !== id) return img;
         const merged: FlowImage = { ...img, ...partial };
-        // If layoutPreset changed (and is not custom), sync coordinates immediately
-        if (merged.layoutPreset && merged.layoutPreset !== "custom") {
-          const spec = getCanvasSpec(aspectRatio);
-          const { stageWidth, stageHeight } = computeStageDimensions(
-            spec,
-            config.algorithm.safeArea,
-            config.algorithm.contentBottomGap,
-          );
-          const resolved = resolveImagePlacement(merged, idx, stageWidth, stageHeight);
+        if (partial.layoutPreset && partial.layoutPreset !== "custom") {
+          // Clear stale preset coordinates when switching presets
+          delete merged.x;
+          delete merged.y;
+          delete merged.width;
+          delete merged.height;
+        }
+        return merged;
+      });
+
+      const updatedImg = nextImages.find((im) => im.id === id);
+      if (!updatedImg) return prev;
+
+      // If non-custom flow preset, recalculate clean coordinates based on its page index
+      if (!updatedImg.isAbsolute && updatedImg.layoutPreset && updatedImg.layoutPreset !== "custom") {
+        const page = updatedImg.pageIndex || 1;
+        const samePageList = nextImages.filter((im) => (im.pageIndex || 1) === page);
+        const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === id));
+
+        const spec = getCanvasSpec(aspectRatio);
+        const { stageWidth, stageHeight } = computeStageDimensions(
+          spec,
+          config.algorithm.safeArea,
+          config.algorithm.contentBottomGap,
+        );
+        const resolved = resolveImagePlacement(updatedImg, indexOnPage, stageWidth, stageHeight);
+        return nextImages.map((im) =>
+          im.id === id
+            ? {
+                ...im,
+                x: resolved.x,
+                y: resolved.y,
+                width: resolved.width,
+                height: resolved.height,
+              }
+            : im,
+        );
+      }
+
+      return nextImages;
+    });
+  };
+
+  const removeImage = (id: string) => {
+    setImages((prev) => {
+      const remaining = prev.filter((img) => img.id !== id);
+      const spec = getCanvasSpec(aspectRatio);
+      const { stageWidth, stageHeight } = computeStageDimensions(
+        spec,
+        config.algorithm.safeArea,
+        config.algorithm.contentBottomGap,
+      );
+      return remaining.map((img) => {
+        if (!img.isAbsolute && img.layoutPreset && img.layoutPreset !== "custom") {
+          const page = img.pageIndex || 1;
+          const samePageList = remaining.filter((im) => (im.pageIndex || 1) === page);
+          const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === img.id));
+          const resolved = resolveImagePlacement(img, indexOnPage, stageWidth, stageHeight);
           return {
-            ...merged,
+            ...img,
             x: resolved.x,
             y: resolved.y,
             width: resolved.width,
             height: resolved.height,
           };
         }
-        return merged;
-      }),
-    );
+        return img;
+      });
+    });
   };
 
-  const removeImage = (id: string) => {
-    setImages((prev) => prev.filter((img) => img.id !== id));
+  const moveImage = (id: string, direction: "up" | "down") => {
+    setImages((prev) => {
+      const index = prev.findIndex((img) => img.id === id);
+      if (index === -1) return prev;
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const temp = next[index]!;
+      next[index] = next[targetIndex]!;
+      next[targetIndex] = temp;
+
+      const spec = getCanvasSpec(aspectRatio);
+      const { stageWidth, stageHeight } = computeStageDimensions(
+        spec,
+        config.algorithm.safeArea,
+        config.algorithm.contentBottomGap,
+      );
+
+      return next.map((img) => {
+        if (!img.isAbsolute && img.layoutPreset && img.layoutPreset !== "custom") {
+          const page = img.pageIndex || 1;
+          const samePageList = next.filter((im) => (im.pageIndex || 1) === page);
+          const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === img.id));
+          const resolved = resolveImagePlacement(img, indexOnPage, stageWidth, stageHeight);
+          return {
+            ...img,
+            x: resolved.x,
+            y: resolved.y,
+            width: resolved.width,
+            height: resolved.height,
+          };
+        }
+        return img;
+      });
+    });
   };
 
   const loadTemplate = (tpl: TypesetConfig) => {
     setConfig(tpl);
     setAspectRatio(tpl.aspectRatio);
+    if (tpl.images) {
+      setImages((prev) => applyTemplateImages(prev, tpl.images));
+    }
   };
 
   const updateTypography = (partial: Partial<TypesetConfig["typography"]>) => {
@@ -193,6 +345,7 @@ export function useTypeset() {
     addImage,
     updateImage,
     removeImage,
+    moveImage,
     highlightWords,
     setHighlightWords,
     result,

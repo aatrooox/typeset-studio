@@ -2,12 +2,14 @@
   "name": "极简技术宽屏 (16:9)",
   "aspectRatio": "wide-16-9",
   "algorithm": {
-    "baseFontSize": 44,
-    "scaleRatio": 1.25,
+    "baseFontSize": 46,
+    "scaleRatio": 1.3,
     "lineHeightMultiplier": 1.45,
     "obstacleGap": 24,
     "targetFillRatio": 0.8,
     "contentBottomGap": 20,
+    "textAlign": "left",
+    "verticalAlign": "center",
     "safeArea": {
       "top": 100,
       "right": 120,
@@ -17,7 +19,8 @@
   },
   "theme": {
     "bgColor": "#09090b",
-    "textColor": "#fafafa",
+    "textColor": "#f4f4f5",
+    "headingColor": "#ffffff",
     "accentColor": "#3b82f6",
     "quoteColor": "#a1a1aa",
     "captionColor": "#71717a",
@@ -26,9 +29,18 @@
   },
   "typography": {
     "headingFont": "AlimamaShuHeiTi",
-    "bodyFont": "LXGWNeoZhiSongPlus"
+    "bodyFont": "SourceHanSansSC, sans-serif"
   },
-  "footerText": "Typeset Studio · 纯算法排版",
-  "watermarkText": "@Antigravity",
+  "footerText": "TECH ENGINEERING INSIGHTS",
+  "watermarkText": "DEV // ARCHITECTURE",
+  "chrome": {
+    "showHeader": true,
+    "showWatermark": true,
+    "showPageNumber": false,
+    "showFooter": true,
+    "showFooterDivider": false,
+    "showFooterText": true,
+    "showFillRatio": false
+  },
   "id": "tpl_wide_tech_banner"
 }

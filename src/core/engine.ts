@@ -14,11 +14,13 @@ import {
 
 export function getDefaultConfig(aspectRatio = "longform-3-4" as TypesetConfig["aspectRatio"]): TypesetConfig {
   const spec = getCanvasSpec(aspectRatio);
+  const isCover = aspectRatio === "wechat-cover-2.35";
+  const isSquare = aspectRatio === "square-1-1";
 
   // Default font sizing based on canvas width
   const baseSize =
     aspectRatio === "wechat-cover-2.35"
-      ? 52
+      ? 56
       : aspectRatio === "wide-16-9"
         ? 44
         : aspectRatio === "square-1-1"
@@ -30,14 +32,16 @@ export function getDefaultConfig(aspectRatio = "longform-3-4" as TypesetConfig["
     aspectRatio,
     algorithm: {
       baseFontSize: baseSize,
-      scaleRatio: aspectRatio === "wechat-cover-2.35" ? 1.35 : 1.25,
+      scaleRatio: isCover ? 1.35 : 1.25,
       lineHeightMultiplier: 1.45,
       obstacleGap: 24,
       targetFillRatio: 0.8,
-      contentBottomGap: 20,
-      textAlign: "left",
-      verticalAlign: aspectRatio === "wechat-cover-2.35" ? "center" : "top",
-      safeArea: spec.defaultSafeArea,
+      contentBottomGap: isCover ? 0 : 20,
+      textAlign: isCover || isSquare ? "center" : "left",
+      verticalAlign: isCover || isSquare ? "center" : "top",
+      safeArea: isCover
+        ? { top: 40, right: 60, bottom: 40, left: 60 }
+        : spec.defaultSafeArea,
     },
     theme: {
       bgColor: "#ffffff",
@@ -54,8 +58,17 @@ export function getDefaultConfig(aspectRatio = "longform-3-4" as TypesetConfig["
       headingFont: "AlimamaShuHeiTi",
       bodyFont: "LXGWNeoZhiSongPlus",
     },
-    footerText: "Typeset Studio · 纯算法排版",
-    watermarkText: "@Antigravity",
+    footerText: isCover ? "" : "Typeset Studio · 纯算法排版",
+    watermarkText: isCover ? "" : "@Antigravity",
+    chrome: {
+      showHeader: !isCover,
+      showWatermark: !isCover,
+      showPageNumber: !isCover && !isSquare,
+      showFooter: !isCover,
+      showFooterDivider: !isCover,
+      showFooterText: !isCover,
+      showFillRatio: false,
+    },
   };
 }
 
@@ -100,12 +113,21 @@ export function runTypeset(params: {
         keepWithNext: ["heading", "subheading", "minor-heading"].includes(b.kind),
       }));
 
-      const pageImages = images.filter((img) => img.pageIndex === pageNum || (!img.pageIndex && index === 0));
+      // Match images explicitly configured for this page (img.pageIndex === pageNum).
+      // If an image has no pageIndex, fallback to Page 1 (index === 0).
+      const pageImages = images.filter((img) => {
+        if (img.pageIndex !== undefined && img.pageIndex !== null && img.pageIndex > 0) {
+          return img.pageIndex === pageNum;
+        }
+        return index === 0;
+      });
+
       const subPages = paginateBlocks(flowBlocks, stageWidth, stageHeight, pageImages, {
         obstacleGap: config.algorithm.obstacleGap,
         pageImageLimit: 2,
         textAlign: config.algorithm.textAlign,
         verticalAlign: config.algorithm.verticalAlign,
+        initialPageNumber: pageNum,
       });
 
       const firstSubPage = subPages[0] ?? {

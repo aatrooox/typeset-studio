@@ -136,9 +136,22 @@ export interface ThemeColors {
   borderSubtle?: string;
 }
 
+export interface TypesetChromeConfig {
+  showHeader?: boolean;
+  showWatermark?: boolean;
+  showPageNumber?: boolean;
+  showFooter?: boolean;
+  showFooterDivider?: boolean;
+  showFooterText?: boolean;
+  showFillRatio?: boolean;
+}
+
+export type TemplateSlot = "article_cover" | "newspic_cover" | "newspic_content";
+
 export interface TypesetConfig {
   id?: string;
   name: string;
+  slot?: TemplateSlot;
   aspectRatio: AspectRatioType;
   algorithm: AlgorithmParams;
   theme: ThemeColors;
@@ -148,6 +161,8 @@ export interface TypesetConfig {
   };
   footerText: string;
   watermarkText: string;
+  chrome?: TypesetChromeConfig;
+  images?: FlowImage[];
 }
 
 export interface TypesetResult {

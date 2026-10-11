@@ -1,0 +1,46 @@
+{
+  "name": "封面1",
+  "aspectRatio": "wechat-cover-2.35",
+  "algorithm": {
+    "baseFontSize": 56,
+    "scaleRatio": 1.3,
+    "lineHeightMultiplier": 1.45,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.8,
+    "contentBottomGap": 20,
+    "textAlign": "center",
+    "verticalAlign": "center",
+    "safeArea": {
+      "top": 40,
+      "right": 60,
+      "bottom": 40,
+      "left": 60
+    }
+  },
+  "theme": {
+    "bgColor": "#f9fcfa",
+    "textColor": "#22201d",
+    "headingColor": "#0f2e22",
+    "accentColor": "#1d4f39",
+    "quoteColor": "#474038",
+    "captionColor": "#71717a",
+    "watermarkColor": "#52525b",
+    "cardBg": "#ffffff"
+  },
+  "typography": {
+    "headingFont": "AlimamaShuHeiTi",
+    "bodyFont": "SourceHanSansSC, sans-serif"
+  },
+  "footerText": "TECH ENGINEERING INSIGHTS",
+  "watermarkText": "DEV // ARCHITECTURE",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": true,
+    "showPageNumber": false,
+    "showFooter": true,
+    "showFooterDivider": false,
+    "showFooterText": true,
+    "showFillRatio": false
+  },
+  "id": "tpl_1791681833354_iofsk"
+}

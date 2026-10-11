@@ -1,0 +1,47 @@
+{
+  "name": "复古报刊多图 (3:4)",
+  "aspectRatio": "longform-3-4",
+  "algorithm": {
+    "baseFontSize": 38,
+    "scaleRatio": 1.25,
+    "lineHeightMultiplier": 1.45,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.8,
+    "contentBottomGap": 20,
+    "textAlign": "left",
+    "verticalAlign": "top",
+    "safeArea": {
+      "top": 96,
+      "right": 88,
+      "bottom": 96,
+      "left": 88
+    }
+  },
+  "theme": {
+    "bgColor": "#f7f4ee",
+    "textColor": "#262320",
+    "headingColor": "#141210",
+    "accentColor": "#991b1b",
+    "quoteColor": "#57534e",
+    "captionColor": "#78716c",
+    "watermarkColor": "#a8a29e",
+    "cardBg": "#eee9df"
+  },
+  "typography": {
+    "headingFont": "SourceHanSerifSC, serif",
+    "bodyFont": "SourceHanSerifSC, serif"
+  },
+  "footerText": "WEEKLY REPORT · 观察与沉淀",
+  "watermarkText": "VOL. 42 // THE CHRONICLE",
+  "chrome": {
+    "showHeader": true,
+    "showWatermark": true,
+    "showPageNumber": true,
+    "showFooter": true,
+    "showFooterDivider": true,
+    "showFooterText": true,
+    "showFillRatio": false
+  },
+  "id": "tpl_longform_vintage_news",
+  "slot": "newspic_content"
+}

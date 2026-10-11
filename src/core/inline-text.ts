@@ -134,17 +134,23 @@ export function isPageMarkerLine(line: string): boolean {
 export function splitTextByPages(text: string): string[] {
   const lines = text.replaceAll("\r\n", "\n").split("\n");
   const pages: string[][] = [[]];
+  let hasMarker = false;
 
   for (const line of lines) {
     if (isPageMarkerLine(line)) {
-      // Start a new page if the current page has content
-      if (pages[pages.length - 1]!.length > 0) {
-        pages.push([]);
+      hasMarker = true;
+      if (pages.length === 1 && pages[0]!.length === 0) {
+        continue;
       }
+      pages.push([]);
       continue;
     }
     pages[pages.length - 1]!.push(line);
   }
 
-  return pages.map((pageLines) => pageLines.join("\n").trim()).filter((p) => p.length > 0);
+  if (!hasMarker) {
+    return [text];
+  }
+
+  return pages.map((pageLines) => pageLines.join("\n").trim());
 }

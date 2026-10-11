@@ -40,11 +40,28 @@ export function useAuth() {
   };
 
   useEffect(() => {
-    if (adminKey) {
-      verifyKey(adminKey);
-    } else {
-      setIsVerified(false);
-    }
+    const initAuth = async () => {
+      let keyToVerify = adminKey;
+      if (!keyToVerify) {
+        try {
+          const res = await fetch("/api/auth/current-key");
+          const data = await res.json();
+          if (data.ok && data.key) {
+            keyToVerify = data.key;
+            setAdminKeyState(data.key);
+            localStorage.setItem(STORAGE_KEY, data.key);
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (keyToVerify) {
+        verifyKey(keyToVerify);
+      } else {
+        setIsVerified(false);
+      }
+    };
+    initAuth();
   }, []);
 
   return {

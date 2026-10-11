@@ -5,10 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "bun --watch src/server/index.ts",
+    "dev:all": "bun --watch src/server/index.ts & vite",
     "build": "vite build",
+    "build:watch": "vite build --watch",
     "preview": "vite preview",
     "server": "bun run src/server/index.ts",
+    "server:watch": "bun --watch src/server/index.ts",
     "start": "bun run src/server/index.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

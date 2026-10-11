@@ -1,0 +1,64 @@
+{
+  "name": "微信纯净大图封面 (2.35:1)",
+  "aspectRatio": "wechat-cover-2.35",
+  "algorithm": {
+    "baseFontSize": 58,
+    "scaleRatio": 1.4,
+    "lineHeightMultiplier": 1.45,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.8,
+    "contentBottomGap": 0,
+    "textAlign": "center",
+    "verticalAlign": "center",
+    "safeArea": {
+      "top": 40,
+      "right": 60,
+      "bottom": 40,
+      "left": 60
+    }
+  },
+  "theme": {
+    "bgColor": "#09090b",
+    "textColor": "#ffffff",
+    "headingColor": "#ffffff",
+    "accentColor": "#10b981",
+    "quoteColor": "#71717a",
+    "captionColor": "#71717a",
+    "watermarkColor": "#3f3f46",
+    "cardBg": "#18181b"
+  },
+  "typography": {
+    "headingFont": "AlimamaShuHeiTi",
+    "bodyFont": "LXGWNeoZhiSongPlus"
+  },
+  "footerText": "",
+  "watermarkText": "",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": false,
+    "showPageNumber": false,
+    "showFooter": false,
+    "showFooterDivider": false,
+    "showFooterText": false,
+    "showFillRatio": false
+  },
+  "id": "tpl_wechat_cover_minimal",
+  "slot": "article_cover",
+  "images": [
+    {
+      "id": "tpl_img_cover_bg",
+      "src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80",
+      "alt": "封面装饰图",
+      "isAbsolute": true,
+      "x": 1350,
+      "y": 120,
+      "width": 880,
+      "height": 760,
+      "zIndex": 5,
+      "rotate": 0,
+      "opacity": 0.95,
+      "borderRadius": 24,
+      "layoutPreset": "custom"
+    }
+  ]
+}

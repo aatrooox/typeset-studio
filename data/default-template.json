@@ -1,0 +1,13 @@
+{
+  "defaultTemplateId": "tpl_1791681833354_iofsk",
+  "slots": {
+    "article_cover": "tpl_wechat_cover_minimal",
+    "newspic_cover": "tpl_newspic_poster_cover",
+    "newspic_content": "tpl_longform_paper_sage"
+  },
+  "accounts": {
+    "ancientone": {
+      "article_cover": "tpl_wechat_cover_editorial"
+    }
+  }
+}

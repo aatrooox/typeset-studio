@@ -30,6 +30,7 @@ export interface PaginateOptions {
   maxPages?: number;
   textAlign?: "left" | "center" | "right";
   verticalAlign?: "top" | "center" | "bottom";
+  initialPageNumber?: number;
 }
 
 /**
@@ -202,17 +203,38 @@ export function paginateBlocks(
   const pages: FlowPage[] = [];
   let blockIndex = 0;
   let cursor = START;
-  let imageIndex = 0;
+  const initialPageNumber = options.initialPageNumber ?? 1;
+  const isSegmentMode = options.initialPageNumber !== undefined;
+  let unassignedIndex = 0;
+  const unassignedImages = allImages.filter((img) => !img.pageIndex);
+  let segmentImagesPlaced = false;
+
+  const MAX_PAGES = options.maxPages ?? 50;
 
   // Pagination loop
-  while (blockIndex < prepared.length || imageIndex < allImages.length) {
-    const pageNum = pages.length + 1;
-    // Assign images for this page (either explicitly tagged with pageIndex === pageNum or sliced by limit)
-    const pageExplicitImages = allImages.filter((img) => img.pageIndex === pageNum);
-    const targetImages =
-      pageExplicitImages.length > 0
-        ? pageExplicitImages
-        : allImages.filter((img) => !img.pageIndex).slice(imageIndex, imageIndex + imageLimit);
+  while (
+    pages.length < MAX_PAGES &&
+    (blockIndex < prepared.length ||
+      (!isSegmentMode && unassignedIndex < unassignedImages.length) ||
+      (isSegmentMode && !segmentImagesPlaced && allImages.length > 0))
+  ) {
+    const pageNum = initialPageNumber + pages.length;
+    let targetImages: FlowImage[] = [];
+
+    if (isSegmentMode) {
+      if (!segmentImagesPlaced) {
+        targetImages = allImages;
+        segmentImagesPlaced = true;
+      }
+    } else {
+      const pageExplicitImages = allImages.filter((img) => img.pageIndex === pageNum);
+      if (pageExplicitImages.length > 0) {
+        targetImages = pageExplicitImages;
+      } else {
+        targetImages = unassignedImages.slice(unassignedIndex, unassignedIndex + imageLimit);
+        unassignedIndex += Math.max(targetImages.length, 1);
+      }
+    }
 
     const images = targetImages.map((img, idx) =>
       resolveImagePlacement(img, idx, stageWidth, stageHeight),
@@ -330,10 +352,6 @@ export function paginateBlocks(
       textBottom,
       fillRatio,
     });
-
-    if (!pageExplicitImages.length) {
-      imageIndex += targetImages.length;
-    }
   }
 
   return pages;

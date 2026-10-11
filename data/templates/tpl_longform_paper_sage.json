@@ -8,6 +8,8 @@
     "obstacleGap": 24,
     "targetFillRatio": 0.8,
     "contentBottomGap": 20,
+    "textAlign": "left",
+    "verticalAlign": "top",
     "safeArea": {
       "top": 96,
       "right": 88,
@@ -16,19 +18,30 @@
     }
   },
   "theme": {
-    "bgColor": "#f9fcfa",
-    "textColor": "#22201d",
-    "accentColor": "#1d4f39",
-    "quoteColor": "#474038",
-    "captionColor": "#6a6257",
-    "watermarkColor": "#8c857b",
+    "bgColor": "#fbfcfb",
+    "textColor": "#1c1917",
+    "headingColor": "#0c0a09",
+    "accentColor": "#047857",
+    "quoteColor": "#44403c",
+    "captionColor": "#78716c",
+    "watermarkColor": "#a8a29e",
     "cardBg": "#ffffff"
   },
   "typography": {
-    "headingFont": "AlimamaShuHeiTi",
+    "headingFont": "LXGWNeoZhiSongPlus",
     "bodyFont": "LXGWNeoZhiSongPlus"
   },
-  "footerText": "Typeset Studio · 纯算法排版",
-  "watermarkText": "@Antigravity",
-  "id": "tpl_longform_paper_sage"
+  "footerText": "Typeset Studio · 纯算法空间排版",
+  "watermarkText": "@ANTIGRAVITY",
+  "chrome": {
+    "showHeader": true,
+    "showWatermark": true,
+    "showPageNumber": true,
+    "showFooter": true,
+    "showFooterDivider": true,
+    "showFooterText": true,
+    "showFillRatio": false
+  },
+  "id": "tpl_longform_paper_sage",
+  "slot": "newspic_content"
 }

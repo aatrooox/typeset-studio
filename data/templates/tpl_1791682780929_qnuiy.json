@@ -1,0 +1,66 @@
+{
+  "name": "封面2-3",
+  "aspectRatio": "wechat-cover-2.35",
+  "algorithm": {
+    "baseFontSize": 56,
+    "scaleRatio": 1.25,
+    "lineHeightMultiplier": 1.45,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.8,
+    "contentBottomGap": 20,
+    "textAlign": "center",
+    "verticalAlign": "center",
+    "safeArea": {
+      "top": 40,
+      "right": 60,
+      "bottom": 40,
+      "left": 60
+    }
+  },
+  "theme": {
+    "bgColor": "#0a0a0a",
+    "textColor": "#ededed",
+    "headingColor": "#ffffff",
+    "accentColor": "#00e676",
+    "quoteColor": "#a0a0a0",
+    "captionColor": "#737373",
+    "watermarkColor": "#a3a3a3",
+    "cardBg": "#121212",
+    "borderSubtle": "#e5e5e5"
+  },
+  "typography": {
+    "headingFont": "AlimamaShuHeiTi",
+    "bodyFont": "LXGWNeoZhiSongPlus"
+  },
+  "footerText": "Typeset Studio · 纯算法排版",
+  "watermarkText": "@Antigravity",
+  "chrome": {
+    "showHeader": true,
+    "showWatermark": true,
+    "showPageNumber": true,
+    "showFooter": true,
+    "showFooterDivider": false,
+    "showFooterText": true,
+    "showFillRatio": false
+  },
+  "images": [
+    {
+      "src": "/uploads/1791682691652_fsgtx6.png",
+      "alt": "头像-捧脸大笑-v4.png",
+      "caption": "",
+      "x": 1276,
+      "y": 170,
+      "width": 700,
+      "height": 590,
+      "captionHeight": 40,
+      "layoutPreset": "custom",
+      "id": "img_1791682691661_1zpg",
+      "isAbsolute": true,
+      "rotate": -14,
+      "opacity": 0.65,
+      "zIndex": 0,
+      "borderRadius": 136
+    }
+  ],
+  "id": "tpl_1791682780929_qnuiy"
+}

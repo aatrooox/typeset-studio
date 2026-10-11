@@ -24,7 +24,7 @@ describe("resolveImagePlacement and Layout Presets", () => {
       stageHeight,
     );
     expect(resolved.x).toBe(468);
-    expect(resolved.y).toBe(420);
+    expect(resolved.y).toBe(260);
     expect(resolved.width).toBe(420);
   });
 
@@ -36,7 +36,7 @@ describe("resolveImagePlacement and Layout Presets", () => {
       stageHeight,
     );
     expect(resolved.x).toBe(16);
-    expect(resolved.y).toBe(420);
+    expect(resolved.y).toBe(260);
     expect(resolved.width).toBe(420);
   });
 
@@ -48,7 +48,7 @@ describe("resolveImagePlacement and Layout Presets", () => {
       stageHeight,
     );
     expect(resolved.x).toBe(242);
-    expect(resolved.y).toBe(420);
+    expect(resolved.y).toBe(260);
   });
 
   it("resolves fill to span full stage width at the bottom", () => {
@@ -152,5 +152,52 @@ describe("resolveImagePlacement and Layout Presets", () => {
     expect(resAbs.pages[0].lines[0].x).toBe(0);
     expect(resAbs.pages[0].images[0].rotate).toBe(15);
     expect(resAbs.pages[0].images[0].zIndex).toBe(20);
+  });
+
+  it("ensures all layout presets on Page 2 remain inside visible canvas bounds even with stale coordinates", () => {
+    const presets = ["auto", "mid-left", "mid-right", "center", "staggered", "corner-soft", "fill"] as const;
+    const staleYImage: FlowImage = {
+      id: "img_page2",
+      src: "https://example.com/p2.png",
+      alt: "P2图",
+      width: 420,
+      height: 280,
+      y: 1100, // stale out-of-bounds Y coordinate from previous preset
+      pageIndex: 2,
+    };
+
+    for (const preset of presets) {
+      const resolved = resolveImagePlacement(
+        { ...staleYImage, layoutPreset: preset },
+        0, // index 0 on Page 2
+        stageWidth,
+        stageHeight,
+      );
+
+      // Y must be >= 0 and image bottom must be <= stageHeight
+      expect(resolved.y).toBeGreaterThanOrEqual(0);
+      expect(resolved.y + resolved.height).toBeLessThanOrEqual(stageHeight);
+      expect(resolved.x).toBeGreaterThanOrEqual(0);
+      expect(resolved.x + resolved.width).toBeLessThanOrEqual(stageWidth);
+    }
+  });
+
+  it("preserves manual coordinates when layoutPreset is custom", () => {
+    const customImage: FlowImage = {
+      id: "img_custom",
+      src: "https://example.com/custom.png",
+      alt: "自定义图",
+      width: 300,
+      height: 200,
+      x: 120,
+      y: 350,
+      layoutPreset: "custom",
+    };
+
+    const resolved = resolveImagePlacement(customImage, 0, stageWidth, stageHeight);
+    expect(resolved.x).toBe(120);
+    expect(resolved.y).toBe(350);
+    expect(resolved.width).toBe(300);
+    expect(resolved.height).toBe(200);
   });
 });

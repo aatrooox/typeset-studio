@@ -1,13 +1,15 @@
 {
-  "name": "金句留白方版 (1:1)",
+  "name": "金句留白方卡 (1:1)",
   "aspectRatio": "square-1-1",
   "algorithm": {
-    "baseFontSize": 48,
-    "scaleRatio": 1.25,
+    "baseFontSize": 50,
+    "scaleRatio": 1.3,
     "lineHeightMultiplier": 1.45,
     "obstacleGap": 24,
     "targetFillRatio": 0.8,
     "contentBottomGap": 20,
+    "textAlign": "center",
+    "verticalAlign": "center",
     "safeArea": {
       "top": 100,
       "right": 100,
@@ -17,7 +19,8 @@
   },
   "theme": {
     "bgColor": "#18181b",
-    "textColor": "#ffffff",
+    "textColor": "#fafafa",
+    "headingColor": "#ffffff",
     "accentColor": "#f59e0b",
     "quoteColor": "#d4d4d8",
     "captionColor": "#a1a1aa",
@@ -26,9 +29,18 @@
   },
   "typography": {
     "headingFont": "AlimamaShuHeiTi",
-    "bodyFont": "LXGWNeoZhiSongPlus"
+    "bodyFont": "LXGWWenKaiScreen"
   },
-  "footerText": "Typeset Studio · 纯算法排版",
-  "watermarkText": "@Antigravity",
+  "footerText": "",
+  "watermarkText": "",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": false,
+    "showPageNumber": false,
+    "showFooter": false,
+    "showFooterDivider": false,
+    "showFooterText": false,
+    "showFillRatio": false
+  },
   "id": "tpl_square_quote_card"
 }
