@@ -41,11 +41,13 @@ export function resolveCanvasFontFamily(fontName: string, isServer: boolean = fa
     return isServer ? 'Georgia, "Songti SC", serif' : 'Georgia, "Songti SC", serif';
   }
 
-  // 2. Generic fallbacks
+  // 2. Generic fallbacks (including custom and project-local fonts)
   if (trimmed.toLowerCase().includes("serif") || trimmed.includes("Song")) {
-    return isServer ? '"Songti SC", serif' : `"${trimmed}", "Songti SC", serif`;
+    return isServer ? `"${trimmed}", "Songti SC", serif` : `"${trimmed}", "Songti SC", serif`;
   }
-  return isServer ? '"Hiragino Sans GB", sans-serif' : `"${trimmed}", "PingFang SC", sans-serif`;
+  return isServer
+    ? `"${trimmed}", "Hiragino Sans GB", "PingFang SC", sans-serif`
+    : `"${trimmed}", "PingFang SC", sans-serif`;
 }
 
 /**

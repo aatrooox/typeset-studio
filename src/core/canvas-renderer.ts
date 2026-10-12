@@ -2,9 +2,14 @@ import { createCanvas, loadImage, type Canvas } from "@napi-rs/canvas";
 import { existsSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { drawPageToContext } from "./canvas-draw";
+import { registerServerFonts } from "./font-loader";
 import { CanvasSpec, FlowPage, TypesetConfig, TypesetResult } from "./types";
 
 export { resolveCanvasFont, resolveCanvasFontFamily, drawPageToContext } from "./canvas-draw";
+export { registerServerFonts, scanLocalFonts, type LocalFontInfo } from "./font-loader";
+
+// Preload and register any project-local fonts into Skia at server startup
+registerServerFonts();
 
 /**
  * Safely loads an image from a URL, data URL, or local file system path for Node/Bun.

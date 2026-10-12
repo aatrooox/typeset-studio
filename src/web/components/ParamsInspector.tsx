@@ -9,6 +9,7 @@ import {
   AlignCenter,
   AlignRight,
   ArrowUpDown,
+  RefreshCw,
 } from "lucide-react";
 import {
   AlgorithmParams,
@@ -16,6 +17,7 @@ import {
   TypesetChromeConfig,
   TypesetConfig,
 } from "../../core/types";
+import { useLocalFonts } from "../hooks/useLocalFonts";
 
 interface ParamsInspectorProps {
   config: TypesetConfig;
@@ -27,7 +29,7 @@ interface ParamsInspectorProps {
   onUpdateChrome: (partial: Partial<TypesetChromeConfig>) => void;
 }
 
-const FONT_OPTIONS = [
+const PRESET_FONT_OPTIONS = [
   { label: "苹方 / 极简黑体 (默认清爽)", value: "PingFang SC" },
   { label: "思源黑体 (现代极简·粗黑)", value: "Noto Sans SC" },
   { label: "典雅宋体 (经典报刊·书卷)", value: "Songti SC" },
@@ -48,6 +50,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
   onUpdateChrome,
 }) => {
   const { algorithm, theme, typography } = config;
+  const { fonts: localFonts, loading: loadingFonts, refreshFonts } = useLocalFonts();
 
   return (
     <aside className="w-80 border-l border-[#eaeaea] dark:border-[#222222] bg-white dark:bg-[#0a0a0a] flex flex-col shrink-0 select-none overflow-y-auto transition-colors">
@@ -133,9 +136,19 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
 
       {/* Section 2: Fonts & Typeface */}
       <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
-        <div className="flex items-center gap-2 text-xs font-semibold text-[#171717] dark:text-white mb-3">
-          <Type className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-          <span>字体与排版字阶</span>
+        <div className="flex items-center justify-between text-xs font-semibold text-[#171717] dark:text-white mb-3">
+          <div className="flex items-center gap-2">
+            <Type className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+            <span>字体与排版字阶</span>
+          </div>
+          <button
+            onClick={() => refreshFonts()}
+            disabled={loadingFonts}
+            title="重新扫描 public/fonts 目录"
+            className="p-1 text-[#888888] hover:text-black dark:hover:text-white rounded hover:bg-[#eaeaea] dark:hover:bg-[#222222] transition-colors"
+          >
+            <RefreshCw className={`w-3 h-3 ${loadingFonts ? "animate-spin text-blue-500" : ""}`} />
+          </button>
         </div>
 
         <div className="flex flex-col gap-3 text-xs">
@@ -149,11 +162,22 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
               onChange={(e) => onUpdateTypography({ headingFont: e.target.value })}
               className="w-full bg-[#fafafa] dark:bg-[#141414] border border-[#d4d4d4] dark:border-[#262626] rounded-md px-2 py-1.5 text-black dark:text-white text-xs focus:outline-none"
             >
-              {FONT_OPTIONS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
+              {localFonts.length > 0 && (
+                <optgroup label="✨ 项目本地字体 (public/fonts)">
+                  {localFonts.map((f) => (
+                    <option key={`head-local-${f.family}`} value={f.family}>
+                      {f.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="🌐 系统 / 云端预设">
+                {PRESET_FONT_OPTIONS.map((f) => (
+                  <option key={`head-preset-${f.value}`} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
@@ -167,13 +191,34 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
               onChange={(e) => onUpdateTypography({ bodyFont: e.target.value })}
               className="w-full bg-[#fafafa] dark:bg-[#141414] border border-[#d4d4d4] dark:border-[#262626] rounded-md px-2 py-1.5 text-black dark:text-white text-xs focus:outline-none"
             >
-              {FONT_OPTIONS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
+              {localFonts.length > 0 && (
+                <optgroup label="✨ 项目本地字体 (public/fonts)">
+                  {localFonts.map((f) => (
+                    <option key={`body-local-${f.family}`} value={f.family}>
+                      {f.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="🌐 系统 / 云端预设">
+                {PRESET_FONT_OPTIONS.map((f) => (
+                  <option key={`body-preset-${f.value}`} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
+
+          {localFonts.length === 0 ? (
+            <div className="text-[10px] text-[#888888] dark:text-[#666666] flex items-center justify-between pt-1 border-t border-[#f5f5f5] dark:border-[#1a1a1a]">
+              <span>💡 将 .ttf / .otf 放入 <code>public/fonts/</code> 即可识别</span>
+            </div>
+          ) : (
+            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center justify-between pt-1 border-t border-[#f5f5f5] dark:border-[#1a1a1a]">
+              <span>✨ 已加载 {localFonts.length} 个项目本地字体</span>
+            </div>
+          )}
         </div>
       </div>
 

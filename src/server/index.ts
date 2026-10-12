@@ -7,6 +7,7 @@ import { authMiddleware, getOrGenerateAdminKey } from "./auth";
 import { renderRouter } from "./routes/render";
 import { templatesRouter } from "./routes/templates";
 import { uploadRouter } from "./routes/upload";
+import { fontsRouter } from "./routes/fonts";
 
 export const app = new Hono();
 
@@ -21,6 +22,9 @@ app.get("/api/health", (c) => {
     time: new Date().toISOString(),
   });
 });
+
+// Discovered project-local fonts (public)
+app.route("/api/fonts", fontsRouter);
 
 // Verify auth key (public check)
 app.post("/api/auth/verify", async (c) => {
@@ -61,6 +65,28 @@ if (!existsSync(UPLOAD_DIR)) {
   mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 app.use("/uploads/*", serveStatic({ root: "./data" }));
+
+// Static local font serving
+app.get("/fonts/:filename", async (c) => {
+  const filename = c.req.param("filename");
+  const candidates = [
+    join(process.cwd(), "public", "fonts", filename),
+    join(process.cwd(), "fonts", filename),
+    join(process.cwd(), "dist", "fonts", filename),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      const file = Bun.file(candidate);
+      return new Response(file, {
+        headers: {
+          "Content-Type": file.type || "font/ttf",
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
+  }
+  return c.notFound();
+});
 
 // Production: serve built static files from dist/
 const DIST_DIR = join(process.cwd(), "dist");
