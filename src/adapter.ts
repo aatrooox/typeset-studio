@@ -192,7 +192,7 @@ async function renderRemoteBatch(
 
 export const typesetStudioAdapter: ImageRenderPlugin = {
   name: "typeset-studio",
-  version: "0.2.0",
+  version: "0.2.1",
 
   async doctor(): Promise<PipelinePluginDoctorCheck[]> {
     const checks: PipelinePluginDoctorCheck[] = [];
