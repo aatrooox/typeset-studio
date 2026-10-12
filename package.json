@@ -1,7 +1,16 @@
 {
-  "name": "@zzhub/typeset-studio",
+  "name": "@akairos/typeset-studio",
   "version": "0.2.0",
   "description": "Algorithmic typesetting studio & zzhub-pipeline image renderer plugin",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aatrooox/typeset-studio.git"
+  },
+  "homepage": "https://github.com/aatrooox/typeset-studio#readme",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/lib/index.js",
   "module": "./dist/lib/index.js",
@@ -19,7 +28,9 @@
     }
   },
   "files": [
-    "dist",
+    "dist/assets",
+    "dist/index.html",
+    "dist/lib",
     "src",
     "data/templates",
     "public/fonts/README.md",
