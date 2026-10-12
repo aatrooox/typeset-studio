@@ -1,20 +1,38 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
-import { join } from "path";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath } from "url";
 import { Hono } from "hono";
 import { getDefaultConfig } from "../../core/engine";
 import { TemplateSlot, TypesetConfig } from "../../core/types";
 
-const TEMPLATES_DIR = join(process.cwd(), "data", "templates");
+export function resolveDataDir(): string {
+  if (process.env.TYPESET_DATA_DIR) {
+    return process.env.TYPESET_DATA_DIR;
+  }
+  const currentDir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+  const candidateLib = resolve(currentDir, "../../data");
+  if (existsSync(candidateLib)) return candidateLib;
+  const candidateSrc = resolve(currentDir, "../../../data");
+  if (existsSync(candidateSrc)) return candidateSrc;
+  const candidateCwd = resolve(process.cwd(), "data");
+  if (existsSync(candidateCwd)) return candidateCwd;
+  return candidateLib;
+}
+
+const TEMPLATES_DIR = join(resolveDataDir(), "templates");
 
 function ensureTemplatesDir(): void {
   if (!existsSync(TEMPLATES_DIR)) {
-    mkdirSync(TEMPLATES_DIR, { recursive: true });
+    try {
+      mkdirSync(TEMPLATES_DIR, { recursive: true });
+    } catch {
+      // Ignore write errors in read-only environments
+    }
   }
   seedDefaultTemplates();
 }
 
-function seedDefaultTemplates(): void {
-  const presets: TypesetConfig[] = [
+export const BUILTIN_PRESETS: TypesetConfig[] = [
     {
       ...getDefaultConfig("wechat-cover-2.35"),
       id: "tpl_wechat_cover_minimal",
@@ -325,13 +343,21 @@ function seedDefaultTemplates(): void {
     },
   ];
 
-  for (const preset of presets) {
+function seedDefaultTemplates(): void {
+  if (!existsSync(TEMPLATES_DIR)) return;
+  for (const preset of BUILTIN_PRESETS) {
     const filePath = join(TEMPLATES_DIR, `${preset.id}.json`);
-    writeFileSync(filePath, JSON.stringify(preset, null, 2), "utf-8");
+    if (!existsSync(filePath)) {
+      try {
+        writeFileSync(filePath, JSON.stringify(preset, null, 2), "utf-8");
+      } catch {
+        // Ignore write failures in package directories
+      }
+    }
   }
 }
 
-const DEFAULT_SETTINGS_PATH = join(process.cwd(), "data", "default-template.json");
+const DEFAULT_SETTINGS_PATH = join(resolveDataDir(), "default-template.json");
 
 export const BUILTIN_SLOT_DEFAULTS: Record<TemplateSlot, string> = {
   article_cover: "tpl_wechat_cover_minimal",
@@ -411,7 +437,21 @@ export function setDefaultTemplateId(id: string): void {
 }
 
 export function findTemplateByKeyOrName(key: string): TypesetConfig | null {
-  ensureTemplatesDir();
+  const lowerKey = key.trim().toLowerCase();
+
+  // 1. Direct match in built-in memory presets
+  const builtin = BUILTIN_PRESETS.find(
+    (p) => p.id?.toLowerCase() === lowerKey || p.name.toLowerCase() === lowerKey,
+  );
+  if (builtin) return builtin;
+
+  // 2. Partial match in built-in memory presets
+  const builtinPartial = BUILTIN_PRESETS.find((p) => p.name.toLowerCase().includes(lowerKey));
+  if (builtinPartial) return builtinPartial;
+
+  // 3. Scan disk if templates directory exists
+  if (!existsSync(TEMPLATES_DIR)) return null;
+
   const directPath = join(TEMPLATES_DIR, `${key}.json`);
   if (existsSync(directPath)) {
     try {
@@ -421,9 +461,8 @@ export function findTemplateByKeyOrName(key: string): TypesetConfig | null {
     }
   }
 
-  // Scan all templates
+  // Scan all templates on disk
   const files = readdirSync(TEMPLATES_DIR).filter((f) => f.endsWith(".json"));
-  const lowerKey = key.trim().toLowerCase();
 
   for (const file of files) {
     try {
