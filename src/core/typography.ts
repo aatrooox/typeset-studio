@@ -1,19 +1,5 @@
 import { ContentBlockKind } from "./types";
 
-export interface TypographicScale {
-  base: number;
-  ratio: number;
-}
-
-export const MODULAR_SCALES: Record<string, number> = {
-  minorSecond: 1.067,
-  majorSecond: 1.125,
-  minorThird: 1.2,
-  majorThird: 1.25,
-  perfectFourth: 1.333,
-  goldenRatio: 1.618,
-};
-
 export function modularScale(base: number, ratio: number, step: number): number {
   return Math.round(base * Math.pow(ratio, step));
 }

@@ -27,9 +27,23 @@ const INITIAL_MARKDOWN = `# 大模型纯算法排版深度剖析
 - 任意画板比例智能自适应
 `;
 
+// 统一预设配图的页内序号计算，手动坐标和自由图层保持原样。
+function resolvePresetImage(
+  image: FlowImage,
+  images: FlowImage[],
+  stageWidth: number,
+  stageHeight: number,
+): FlowImage {
+  if (image.isAbsolute || !image.layoutPreset || image.layoutPreset === "custom") return image;
+  const page = image.pageIndex || 1;
+  const indexOnPage = images.filter((item) => (item.pageIndex || 1) === page)
+    .findIndex((item) => item.id === image.id);
+  return resolveImagePlacement(image, indexOnPage, stageWidth, stageHeight);
+}
+
 export function useTypeset() {
-  const [aspectRatio, setAspectRatio] = useState<AspectRatioType>("longform-3-4");
   const [config, setConfig] = useState<TypesetConfig>(() => getDefaultConfig("longform-3-4"));
+  const aspectRatio = config.aspectRatio;
   const [markdown, setMarkdown] = useState<string>(INITIAL_MARKDOWN);
   const [images, setImages] = useState<FlowImage[]>([
     {
@@ -117,7 +131,6 @@ export function useTypeset() {
   }, []);
 
   const switchAspectRatio = (ratio: AspectRatioType) => {
-    setAspectRatio(ratio);
     const spec = getCanvasSpec(ratio);
     const nextDefault = getDefaultConfig(ratio);
     const { stageWidth, stageHeight } = computeStageDimensions(
@@ -125,24 +138,7 @@ export function useTypeset() {
       nextDefault.algorithm.safeArea,
       nextDefault.algorithm.contentBottomGap,
     );
-    setImages((prev) =>
-      prev.map((img) => {
-        if (!img.isAbsolute && img.layoutPreset && img.layoutPreset !== "custom") {
-          const page = img.pageIndex || 1;
-          const samePageList = prev.filter((im) => (im.pageIndex || 1) === page);
-          const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === img.id));
-          const resolved = resolveImagePlacement(img, indexOnPage, stageWidth, stageHeight);
-          return {
-            ...img,
-            x: resolved.x,
-            y: resolved.y,
-            width: resolved.width,
-            height: resolved.height,
-          };
-        }
-        return img;
-      }),
-    );
+    setImages((prev) => prev.map((image) => resolvePresetImage(image, prev, stageWidth, stageHeight)));
     setConfig((prev) => {
       return {
         ...prev,
@@ -235,28 +231,15 @@ export function useTypeset() {
 
       // If non-custom flow preset, recalculate clean coordinates based on its page index
       if (!updatedImg.isAbsolute && updatedImg.layoutPreset && updatedImg.layoutPreset !== "custom") {
-        const page = updatedImg.pageIndex || 1;
-        const samePageList = nextImages.filter((im) => (im.pageIndex || 1) === page);
-        const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === id));
-
         const spec = getCanvasSpec(aspectRatio);
         const { stageWidth, stageHeight } = computeStageDimensions(
           spec,
           config.algorithm.safeArea,
           config.algorithm.contentBottomGap,
         );
-        const resolved = resolveImagePlacement(updatedImg, indexOnPage, stageWidth, stageHeight);
-        return nextImages.map((im) =>
-          im.id === id
-            ? {
-                ...im,
-                x: resolved.x,
-                y: resolved.y,
-                width: resolved.width,
-                height: resolved.height,
-              }
-            : im,
-        );
+        return nextImages.map((image) => image.id === id
+          ? resolvePresetImage(image, nextImages, stageWidth, stageHeight)
+          : image);
       }
 
       return nextImages;
@@ -272,22 +255,7 @@ export function useTypeset() {
         config.algorithm.safeArea,
         config.algorithm.contentBottomGap,
       );
-      return remaining.map((img) => {
-        if (!img.isAbsolute && img.layoutPreset && img.layoutPreset !== "custom") {
-          const page = img.pageIndex || 1;
-          const samePageList = remaining.filter((im) => (im.pageIndex || 1) === page);
-          const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === img.id));
-          const resolved = resolveImagePlacement(img, indexOnPage, stageWidth, stageHeight);
-          return {
-            ...img,
-            x: resolved.x,
-            y: resolved.y,
-            width: resolved.width,
-            height: resolved.height,
-          };
-        }
-        return img;
-      });
+      return remaining.map((image) => resolvePresetImage(image, remaining, stageWidth, stageHeight));
     });
   };
 
@@ -309,28 +277,12 @@ export function useTypeset() {
         config.algorithm.contentBottomGap,
       );
 
-      return next.map((img) => {
-        if (!img.isAbsolute && img.layoutPreset && img.layoutPreset !== "custom") {
-          const page = img.pageIndex || 1;
-          const samePageList = next.filter((im) => (im.pageIndex || 1) === page);
-          const indexOnPage = Math.max(0, samePageList.findIndex((im) => im.id === img.id));
-          const resolved = resolveImagePlacement(img, indexOnPage, stageWidth, stageHeight);
-          return {
-            ...img,
-            x: resolved.x,
-            y: resolved.y,
-            width: resolved.width,
-            height: resolved.height,
-          };
-        }
-        return img;
-      });
+      return next.map((image) => resolvePresetImage(image, next, stageWidth, stageHeight));
     });
   };
 
   const loadTemplate = (tpl: TypesetConfig) => {
     setConfig(tpl);
-    setAspectRatio(tpl.aspectRatio);
     if (tpl.images) {
       setImages((prev) => applyTemplateImages(prev, tpl.images));
     }

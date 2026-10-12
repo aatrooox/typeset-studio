@@ -56,6 +56,26 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 上传失败时仍可用本地图片继续编辑。
+    const addUploadedImage = (src: string) => onAddImage({
+      src,
+      alt: file.name,
+      caption: "",
+      x: 40,
+      y: 400,
+      width: 440,
+      height: 300,
+      captionHeight: 36,
+      layoutPreset: "auto",
+    });
+    const readLocalImage = () => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") addUploadedImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    };
+
     setIsUploading(true);
     try {
       const formData = new FormData();
@@ -69,56 +89,12 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
 
       const data = await res.json();
       if (data.ok && data.url) {
-        onAddImage({
-          src: data.url,
-          alt: file.name,
-          caption: "",
-          x: 40,
-          y: 400,
-          width: 440,
-          height: 300,
-          captionHeight: 36,
-          layoutPreset: "auto",
-        });
+        addUploadedImage(data.url);
       } else {
-        // Fallback to FileReader base64
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            onAddImage({
-              src: event.target.result as string,
-              alt: file.name,
-              caption: "",
-              x: 40,
-              y: 400,
-              width: 440,
-              height: 300,
-              captionHeight: 36,
-              layoutPreset: "auto",
-            });
-          }
-        };
-        reader.readAsDataURL(file);
+        readLocalImage();
       }
     } catch {
-      // Fallback to base64
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          onAddImage({
-            src: event.target.result as string,
-            alt: file.name,
-            caption: "",
-            x: 40,
-            y: 400,
-            width: 440,
-            height: 300,
-            captionHeight: 36,
-            layoutPreset: "auto",
-          });
-        }
-      };
-      reader.readAsDataURL(file);
+      readLocalImage();
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -375,7 +351,7 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                           <select
                             value={img.layoutPreset || "auto"}
                             onChange={(e) =>
-                              onUpdateImage(img.id, { layoutPreset: e.target.value as any })
+                              onUpdateImage(img.id, { layoutPreset: e.target.value as FlowImage["layoutPreset"] })
                             }
                             className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1 text-black dark:text-white text-[11px] focus:outline-none"
                           >

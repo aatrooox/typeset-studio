@@ -4,7 +4,6 @@ import { paginateBlocks } from "./obstacle-flow";
 import { computeBlockStyles } from "./typography";
 import { resolveImagePlacement } from "./image-layout";
 import {
-  ContentBlock,
   FlowBlock,
   FlowImage,
   FlowPage,
@@ -12,7 +11,7 @@ import {
   TypesetResult,
 } from "./types";
 
-export function getDefaultConfig(aspectRatio = "longform-3-4" as TypesetConfig["aspectRatio"]): TypesetConfig {
+export function getDefaultConfig(aspectRatio: TypesetConfig["aspectRatio"] = "longform-3-4"): TypesetConfig {
   const spec = getCanvasSpec(aspectRatio);
   const isCover = aspectRatio === "wechat-cover-2.35";
   const isSquare = aspectRatio === "square-1-1";
@@ -94,6 +93,17 @@ export function runTypeset(params: {
     bodyFont: config.typography.bodyFont,
   });
 
+  // 自动分页和手动分页共用相同的文字块样式。
+  const createFlowBlocks = (text: string): FlowBlock[] => parseContentBlocks(text).map((block) => ({
+    ...blockStyles[block.kind],
+    kind: block.kind,
+    text: block.text,
+    runs: parseInlineRuns(block.text, highlightWords),
+    bullet: block.kind === "list-item" ? block.bullet ?? "•" : undefined,
+    textIndent: block.kind === "list-item" ? 28 : block.kind === "quote" ? 20 : 0,
+    keepWithNext: ["heading", "subheading", "minor-heading"].includes(block.kind),
+  }));
+
   // Check if explicit page markers exist
   const pageSegments = splitTextByPages(markdown);
   let pages: FlowPage[] = [];
@@ -102,16 +112,7 @@ export function runTypeset(params: {
     // Multi-page explicit segmentation
     pages = pageSegments.map((segmentText, index) => {
       const pageNum = index + 1;
-      const rawBlocks = parseContentBlocks(segmentText);
-      const flowBlocks: FlowBlock[] = rawBlocks.map((b) => ({
-        ...blockStyles[b.kind],
-        kind: b.kind,
-        text: b.text,
-        runs: parseInlineRuns(b.text, highlightWords),
-        bullet: b.kind === "list-item" ? b.bullet ?? "•" : undefined,
-        textIndent: b.kind === "list-item" ? 28 : b.kind === "quote" ? 20 : 0,
-        keepWithNext: ["heading", "subheading", "minor-heading"].includes(b.kind),
-      }));
+      const flowBlocks = createFlowBlocks(segmentText);
 
       // Match images explicitly configured for this page (img.pageIndex === pageNum).
       // If an image has no pageIndex, fallback to Page 1 (index === 0).
@@ -147,16 +148,7 @@ export function runTypeset(params: {
     });
   } else {
     // Single page or auto-flowing pagination
-    const rawBlocks = parseContentBlocks(markdown);
-    const flowBlocks: FlowBlock[] = rawBlocks.map((b) => ({
-      ...blockStyles[b.kind],
-      kind: b.kind,
-      text: b.text,
-      runs: parseInlineRuns(b.text, highlightWords),
-      bullet: b.kind === "list-item" ? b.bullet ?? "•" : undefined,
-      textIndent: b.kind === "list-item" ? 28 : b.kind === "quote" ? 20 : 0,
-      keepWithNext: ["heading", "subheading", "minor-heading"].includes(b.kind),
-    }));
+    const flowBlocks = createFlowBlocks(markdown);
 
     pages = paginateBlocks(flowBlocks, stageWidth, stageHeight, images, {
       obstacleGap: config.algorithm.obstacleGap,

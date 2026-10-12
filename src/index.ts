@@ -31,14 +31,14 @@ export { resolveTypesetResult, type RenderRequestBody } from "./server/routes/re
 
 export type {
   AlgorithmParams,
-  AspectRatioPreset,
+  AspectRatioType,
   CanvasSpec,
   ContentBlockKind,
   FlowBlock,
   FlowImage,
   FlowLine,
   FlowPage,
-  InlineFragment,
+  FlowLineFragment,
   TemplateSlot,
   ThemeColors,
   TypesetChromeConfig,

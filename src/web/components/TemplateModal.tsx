@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Check, FolderPlus, Trash2, X, Sparkles, Star, Tag, ChevronDown } from "lucide-react";
+import { Check, FolderPlus, Trash2, X, Sparkles, Star } from "lucide-react";
 import { TemplateSlot, TypesetConfig } from "../../core/types";
 
 interface TemplateModalProps {
@@ -19,12 +19,6 @@ interface SlotsResponse {
     newspic_content?: { id: string; template?: TypesetConfig };
   };
 }
-
-const SLOT_LABELS: Record<TemplateSlot, string> = {
-  article_cover: "文章封面 (2.35:1)",
-  newspic_cover: "贴图封面 (3:4)",
-  newspic_content: "贴图内容 (3:4)",
-};
 
 export const TemplateModal: React.FC<TemplateModalProps> = ({
   isOpen,
@@ -114,7 +108,6 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
         id: undefined, // auto generate
         name: templateName.trim(),
         slot: saveSlot !== "none" ? saveSlot : undefined,
-        images: currentConfig.images ? [...currentConfig.images] : undefined,
       };
 
       const res = await fetch("/api/templates", {
@@ -192,7 +185,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
               />
               <select
                 value={saveSlot}
-                onChange={(e) => setSaveSlot(e.target.value as any)}
+                onChange={(e) => setSaveSlot(e.target.value as TemplateSlot | "none")}
                 className="bg-white dark:bg-[#0a0a0a] border border-[#d4d4d4] dark:border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-[#444444]"
               >
                 <option value="article_cover">槽位: 文章封面 (2.35:1)</option>
@@ -224,11 +217,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
                 <span>默认槽位配置账号:</span>
                 <select
                   value={account}
-                  onChange={(e) => {
-                    const acc = e.target.value;
-                    setAccount(acc);
-                    fetchSlots(acc);
-                  }}
+                  onChange={(e) => setAccount(e.target.value)}
                   className="bg-white dark:bg-[#141414] border border-[#d4d4d4] dark:border-[#2a2a2a] rounded px-2 py-0.5 text-xs text-black dark:text-white focus:outline-none font-mono"
                 >
                   <option value="default">default (主账号)</option>

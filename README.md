@@ -80,7 +80,6 @@
 | **`react` / `react-dom`** | `^19.0.0` | 现代化声明式组件与状态管理 |
 | **`tailwindcss`** | `^3.4.17` | 高性能极简黑白美学原子化样式 |
 | **`lucide-react`** | `^1.16.0` | 精致图标库 |
-| **`html-to-image`** | `^1.11.11` | 前端画布超清 2x 导出 |
 
 ---
 
@@ -148,7 +147,7 @@ const STUDIO_URL = process.env.TYPESET_STUDIO_URL || "http://localhost:4890";
 
 export const typesetStudioAdapter: ImageRenderPlugin = {
   name: "typeset-studio",
-  version: "0.1.0",
+  version: "0.2.2",
 
   doctor: async () => {
     try {
@@ -238,7 +237,7 @@ export default typesetStudioAdapter;
 ### 1. 服务健康检查 (`GET /api/health`)
 ```bash
 curl http://localhost:4890/api/health
-# {"status":"ok","name":"Typeset Studio Server","version":"0.1.0"}
+# {"status":"ok","name":"Typeset Studio Server","version":"0.2.2"}
 ```
 
 ### 2. 槽位解析与排版 (`POST /api/render`)

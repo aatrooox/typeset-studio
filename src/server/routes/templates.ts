@@ -464,6 +464,7 @@ export function findTemplateByKeyOrName(key: string): TypesetConfig | null {
   // Scan all templates on disk
   const files = readdirSync(TEMPLATES_DIR).filter((f) => f.endsWith(".json"));
 
+  const templates: TypesetConfig[] = [];
   for (const file of files) {
     try {
       const content = readFileSync(join(TEMPLATES_DIR, file), "utf-8");
@@ -471,25 +472,14 @@ export function findTemplateByKeyOrName(key: string): TypesetConfig | null {
       if (tpl.id?.toLowerCase() === lowerKey || tpl.name.toLowerCase() === lowerKey) {
         return tpl;
       }
+      templates.push(tpl);
     } catch {
       // ignore
     }
   }
 
-  // Partial match by name
-  for (const file of files) {
-    try {
-      const content = readFileSync(join(TEMPLATES_DIR, file), "utf-8");
-      const tpl = JSON.parse(content) as TypesetConfig;
-      if (tpl.name.toLowerCase().includes(lowerKey)) {
-        return tpl;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  return null;
+  // 精确匹配优先，名称模糊匹配复用已读取的模板。
+  return templates.find((tpl) => tpl.name.toLowerCase().includes(lowerKey)) ?? null;
 }
 
 export const templatesRouter = new Hono();

@@ -1,4 +1,4 @@
-import { FlowImage, TypesetConfig } from "./types";
+import { FlowImage } from "./types";
 
 /**
  * Applies template image layout configurations to current content images based on index intersection:

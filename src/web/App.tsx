@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { toPng } from "html-to-image";
 import { AuthModal } from "./components/AuthModal";
 import { CanvasViewport } from "./components/CanvasViewport";
 import { EditorSidebar } from "./components/EditorSidebar";
@@ -197,7 +196,6 @@ export const App: React.FC = () => {
           }
         }
         if (exportSucceeded) {
-          setIsExporting(false);
           return;
         }
       }

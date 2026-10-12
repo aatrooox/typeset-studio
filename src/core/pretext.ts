@@ -2,16 +2,8 @@ export {
   prepareRichInline,
   layoutNextRichInlineLineRange,
   materializeRichInlineLineRange,
-  measureRichInlineStats,
 } from "@chenglou/pretext/rich-inline";
 export type { RichInlineCursor } from "@chenglou/pretext/rich-inline";
-
-export {
-  prepare,
-  layoutNextLineRange,
-  materializeLineRange,
-  measureLineStats,
-} from "@chenglou/pretext";
 
 let initialized = false;
 

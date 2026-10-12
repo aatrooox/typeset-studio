@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { registerServerFonts, scanLocalFonts } from "../../core/font-loader";
+import { registerServerFonts } from "../../core/font-loader";
 
 export const fontsRouter = new Hono();
 

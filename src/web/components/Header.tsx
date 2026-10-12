@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
           <span>Typeset Studio</span>
         </div>
-        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden md:inline">v0.1.0</span>
+        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden md:inline">v0.2.2</span>
         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#111111] border border-[#e5e5e5] dark:border-[#222222] text-[11px] text-emerald-600 dark:text-[#00e676]">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#00e676] animate-pulse" />
           <span className="font-mono">Ready</span>

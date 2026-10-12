@@ -12,16 +12,16 @@ export function resolveCanvasFontFamily(fontName: string, isServer: boolean = fa
   const trimmed = rawFirst.replace(/["'\\]/g, "").trim();
 
   // 1. Explicit font priority matching: The chosen font family MUST come first
-  if (trimmed.includes("Noto Sans") || trimmed === "Noto Sans SC") {
+  if (trimmed.includes("Noto Sans")) {
     return isServer ? '"Hiragino Sans GB", sans-serif' : '"Noto Sans SC", "PingFang SC", sans-serif';
   }
-  if (trimmed.includes("PingFang") || trimmed === "PingFang SC") {
+  if (trimmed.includes("PingFang")) {
     return isServer ? '"Hiragino Sans GB", sans-serif' : '"PingFang SC", "Noto Sans SC", sans-serif';
   }
-  if (trimmed.includes("Noto Serif") || trimmed === "Noto Serif SC") {
+  if (trimmed.includes("Noto Serif")) {
     return isServer ? '"Songti SC", serif' : '"Noto Serif SC", "Songti SC", serif';
   }
-  if (trimmed.includes("Songti") || trimmed === "Songti SC" || trimmed === "STSong") {
+  if (trimmed.includes("Songti") || trimmed === "STSong") {
     return isServer ? '"Songti SC", serif' : '"Songti SC", "Noto Serif SC", serif';
   }
   if (trimmed.includes("Kai") || trimmed.includes("WenKai")) {
@@ -29,7 +29,7 @@ export function resolveCanvasFontFamily(fontName: string, isServer: boolean = fa
       ? '"STKaiti", "Kaiti SC", "Songti SC", serif'
       : '"LXGW WenKai GB Screen", "LXGW WenKai Screen", "Kaiti SC", "STKaiti", serif';
   }
-  if (trimmed.includes("Yuan") || trimmed.includes("Yuanti")) {
+  if (trimmed.includes("Yuan")) {
     return isServer
       ? '"STYuanti", "Yuanti SC", "Hiragino Sans GB", sans-serif'
       : '"Yuanti SC", "STYuanti", "PingFang SC", sans-serif';
@@ -43,7 +43,7 @@ export function resolveCanvasFontFamily(fontName: string, isServer: boolean = fa
 
   // 2. Generic fallbacks (including custom and project-local fonts)
   if (trimmed.toLowerCase().includes("serif") || trimmed.includes("Song")) {
-    return isServer ? `"${trimmed}", "Songti SC", serif` : `"${trimmed}", "Songti SC", serif`;
+    return `"${trimmed}", "Songti SC", serif`;
   }
   return isServer
     ? `"${trimmed}", "Hiragino Sans GB", "PingFang SC", sans-serif`
@@ -93,7 +93,7 @@ export async function drawPageToContext(
   ctx.restore();
 
   // 2. Compute Stage Layout Dimensions
-  const { stageWidth, stageHeight, stageX, stageY } = computeStageDimensions(
+  const { stageX, stageY } = computeStageDimensions(
     spec,
     algorithm.safeArea,
     algorithm.contentBottomGap,
@@ -111,7 +111,7 @@ export async function drawPageToContext(
     // Keep header bar in safe upper margin, safely above stageY
     const headerY = Math.max(24, Math.floor(algorithm.safeArea.top * 0.45));
 
-    if (showWatermark && config.watermarkText?.trim()) {
+    if (showWatermark) {
       ctx.save();
       ctx.font = resolveCanvasFont("600 14px PingFang SC", isServer);
       ctx.fillStyle = theme.watermarkColor;
@@ -286,7 +286,7 @@ export async function drawPageToContext(
       ctx.restore();
     }
 
-    if (showFooterText && config.footerText?.trim()) {
+    if (showFooterText) {
       ctx.save();
       ctx.font = resolveCanvasFont('500 13px PingFang SC', isServer);
       ctx.fillStyle = theme.watermarkColor || theme.captionColor;
