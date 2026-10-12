@@ -5,16 +5,21 @@ import { app } from "../server/index";
 import { readFontFamilyName, registerServerFonts, scanLocalFonts } from "./font-loader";
 
 describe("Project-Local Fonts Scanning & Registration", () => {
-  const testFontsDir = join(process.cwd(), "public", "fonts");
+  const isolatedCwd = join(process.cwd(), "tmp", `test-fonts-${Date.now()}`);
+  const isolatedFontsDir = join(isolatedCwd, "public", "fonts");
 
   beforeAll(() => {
-    if (!existsSync(testFontsDir)) {
-      mkdirSync(testFontsDir, { recursive: true });
+    mkdirSync(isolatedFontsDir, { recursive: true });
+  });
+
+  afterAll(() => {
+    if (existsSync(isolatedCwd)) {
+      rmSync(isolatedCwd, { recursive: true, force: true });
     }
   });
 
   it("safely handles empty or non-font directory without crashing", () => {
-    const fonts = scanLocalFonts({ refresh: true });
+    const fonts = scanLocalFonts({ cwd: isolatedCwd, refresh: true });
     expect(Array.isArray(fonts)).toBe(true);
   });
 
@@ -29,34 +34,26 @@ describe("Project-Local Fonts Scanning & Registration", () => {
   });
 
   it("recognizes fonts.json manifest metadata when present", () => {
-    const dummyFontPath = join(testFontsDir, "MockCustomFont.ttf");
-    const manifestPath = join(testFontsDir, "fonts.json");
+    const dummyFontPath = join(isolatedFontsDir, "MockCustomFont.ttf");
+    const manifestPath = join(isolatedFontsDir, "fonts.json");
 
-    try {
-      // Write a small dummy file
-      writeFileSync(dummyFontPath, "dummy-font-content");
-      writeFileSync(
-        manifestPath,
-        JSON.stringify({
-          "MockCustomFont.ttf": {
-            family: "Mock Custom Font",
-            label: "模拟测试字体 (自定义标签)",
-          },
-        }),
-      );
+    writeFileSync(dummyFontPath, "dummy-font-content");
+    writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        "MockCustomFont.ttf": {
+          family: "Mock Custom Font",
+          label: "模拟测试字体 (自定义标签)",
+        },
+      }),
+    );
 
-      const fonts = scanLocalFonts({ refresh: true });
-      const found = fonts.find((f) => f.filename === "MockCustomFont.ttf");
+    const fonts = scanLocalFonts({ cwd: isolatedCwd, refresh: true });
+    const found = fonts.find((f) => f.filename === "MockCustomFont.ttf");
 
-      expect(found).toBeDefined();
-      expect(found?.family).toBe("Mock Custom Font");
-      expect(found?.label).toBe("模拟测试字体 (自定义标签)");
-      expect(found?.url).toBe("/fonts/MockCustomFont.ttf");
-    } finally {
-      // Clean up mock test files
-      if (existsSync(dummyFontPath)) rmSync(dummyFontPath);
-      if (existsSync(manifestPath)) rmSync(manifestPath);
-      scanLocalFonts({ refresh: true });
-    }
+    expect(found).toBeDefined();
+    expect(found?.family).toBe("Mock Custom Font");
+    expect(found?.label).toBe("模拟测试字体 (自定义标签)");
+    expect(found?.url).toBe("/fonts/MockCustomFont.ttf");
   });
 });

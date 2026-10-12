@@ -138,6 +138,58 @@ function mapBodyImages(
 
 // ── Typeset Studio Pipeline Adapter ───────────────────────────────
 
+const REMOTE_STUDIO_URL = process.env.TYPESET_STUDIO_URL?.replace(/\/$/, "");
+
+async function renderRemoteBatch(
+  studioUrl: string,
+  body: any,
+  outputDir: string,
+  filenamePrefix: string,
+  route: "wechat-article" | "wechat-newspic",
+  kind: "cover" | "page",
+): Promise<{ assets: RenderAsset[]; pageCount: number; pages: ImageRenderOutput["pages"] }> {
+  const res = await fetch(`${studioUrl}/api/render/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`Cloud Typeset Studio returned HTTP ${res.status}: ${res.statusText}`);
+  }
+  const data = (await res.json()) as {
+    ok: boolean;
+    pageCount: number;
+    pages: Array<{ pageNumber: number; dataUrl: string }>;
+  };
+  const assets: RenderAsset[] = [];
+  const pagesSummary: ImageRenderOutput["pages"] = [];
+
+  for (let i = 0; i < data.pages.length; i++) {
+    const pageItem = data.pages[i];
+    const pageNum = pageItem.pageNumber;
+    const base64Data = pageItem.dataUrl.replace(/^data:image\/png;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+    const filename =
+      kind === "cover" ? "cover.png" : `${filenamePrefix}-${String(pageNum).padStart(2, "0")}.png`;
+    const filePath = join(outputDir, filename);
+    await writeFile(filePath, buffer);
+
+    assets.push({
+      kind,
+      route,
+      index: kind === "page" ? pageNum : undefined,
+      path: filePath,
+    });
+    pagesSummary.push({
+      page: pageNum,
+      imageCount: 0,
+      imageSources: [],
+    });
+  }
+
+  return { assets, pageCount: data.pageCount, pages: pagesSummary };
+}
+
 export const typesetStudioAdapter: ImageRenderPlugin = {
   name: "typeset-studio",
   version: "0.2.0",
@@ -145,7 +197,26 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
   async doctor(): Promise<PipelinePluginDoctorCheck[]> {
     const checks: PipelinePluginDoctorCheck[] = [];
 
-    // 1. Skia engine check
+    // 0. Remote cloud service check (if TYPESET_STUDIO_URL is set)
+    if (REMOTE_STUDIO_URL) {
+      try {
+        const res = await fetch(`${REMOTE_STUDIO_URL}/api/health`);
+        const data = (await res.json()) as any;
+        checks.push({
+          name: "remote-service",
+          ok: res.ok,
+          message: `Connected to Cloud Typeset Studio at ${REMOTE_STUDIO_URL} (${data.name || "active"})`,
+        });
+      } catch (err) {
+        checks.push({
+          name: "remote-service",
+          ok: false,
+          message: `Failed to connect to Cloud Typeset Studio at ${REMOTE_STUDIO_URL}: ${err}`,
+        });
+      }
+    }
+
+    // 1. Skia engine check (for local/in-process rendering)
     try {
       const { createCanvas } = await import("@napi-rs/canvas");
       const canvas = createCanvas(10, 10);
@@ -160,8 +231,10 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
     } catch (err) {
       checks.push({
         name: "@napi-rs/canvas",
-        ok: false,
-        message: `@napi-rs/canvas initialization failed: ${err}`,
+        ok: !REMOTE_STUDIO_URL,
+        message: REMOTE_STUDIO_URL
+          ? "@napi-rs/canvas not installed locally (using Cloud Typeset Studio microservice)"
+          : `@napi-rs/canvas initialization failed: ${err}`,
       });
     }
 
@@ -193,6 +266,97 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
     const footerText = input.accountVisualParams?.footer;
     const watermarkText = account ? `@${account}` : undefined;
     const effectiveTitle = cleanTitle(title || state.metadata?.title || "");
+
+    // ── 0. Optional: Remote Cloud Microservice Mode ─────────────
+    if (REMOTE_STUDIO_URL) {
+      if (route === "wechat-article") {
+        const coverImages = mapBodyImages(input.bodyImages, input.pageSpecs);
+        return await renderRemoteBatch(
+          REMOTE_STUDIO_URL,
+          {
+            slot: "article_cover",
+            route: "wechat-article",
+            account,
+            title: effectiveTitle,
+            markdown: `# ${effectiveTitle}`,
+            template: input.template,
+            images: coverImages,
+            highlightWords,
+            config: { footerText, watermarkText },
+          },
+          outputDir,
+          "cover",
+          "wechat-article",
+          "cover",
+        );
+      }
+
+      if (route === "wechat-newspic") {
+        const newspicSpec = state.intent?.newspic_render;
+        const paginationMode =
+          input.template === "longform-3-4"
+            ? "multi"
+            : input.template === "poster-3-4"
+            ? "single"
+            : newspicSpec?.pagination_mode || "multi";
+
+        const isMultiPage = paginationMode === "multi";
+        const coverImages = mapBodyImages(input.bodyImages, input.pageSpecs);
+
+        // Remote cover
+        const coverRes = await renderRemoteBatch(
+          REMOTE_STUDIO_URL,
+          {
+            slot: "newspic_cover",
+            route: "wechat-newspic",
+            kind: "cover",
+            account,
+            title: effectiveTitle,
+            markdown: `# ${effectiveTitle}`,
+            template: input.template,
+            images: coverImages,
+            highlightWords,
+            config: { footerText, watermarkText },
+          },
+          outputDir,
+          "cover",
+          "wechat-newspic",
+          "cover",
+        );
+
+        if (!isMultiPage) {
+          return coverRes;
+        }
+
+        // Remote content pages
+        const contentImages = mapBodyImages(input.bodyImages, input.pageSpecs);
+        const contentRes = await renderRemoteBatch(
+          REMOTE_STUDIO_URL,
+          {
+            slot: "newspic_content",
+            route: "wechat-newspic",
+            kind: "content",
+            account,
+            title: effectiveTitle,
+            markdown: bodyText || `# ${effectiveTitle}`,
+            template: input.template,
+            images: contentImages,
+            highlightWords,
+            config: { footerText, watermarkText },
+          },
+          outputDir,
+          "article",
+          "wechat-newspic",
+          "page",
+        );
+
+        return {
+          assets: [...coverRes.assets, ...contentRes.assets],
+          pageCount: contentRes.pageCount,
+          pages: contentRes.pages,
+        };
+      }
+    }
 
     // ── 1. Route: wechat-article (2.35:1 Cover only) ─────────────
     if (route === "wechat-article") {

@@ -1,13 +1,37 @@
 {
-  "name": "typeset-studio",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@zzhub/typeset-studio",
+  "version": "0.2.0",
+  "description": "Algorithmic typesetting studio & zzhub-pipeline image renderer plugin",
   "type": "module",
+  "main": "./dist/lib/index.js",
+  "module": "./dist/lib/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/lib/index.js",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./adapter": {
+      "import": "./dist/lib/adapter.js",
+      "types": "./src/adapter.ts",
+      "default": "./src/adapter.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "data/templates",
+    "public/fonts/README.md",
+    "public/fonts/fonts.json",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite",
     "dev:server": "bun --watch src/server/index.ts",
     "dev:all": "bun --watch src/server/index.ts & vite",
-    "build": "vite build",
+    "build": "vite build && bun run build:lib",
+    "build:lib": "bun build src/index.ts src/adapter.ts --outdir dist/lib --target node --external @napi-rs/canvas",
     "build:watch": "vite build --watch",
     "preview": "vite preview",
     "server": "bun run src/server/index.ts",
