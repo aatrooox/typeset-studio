@@ -104,6 +104,7 @@ export function scanLocalFonts(options?: { refresh?: boolean; cwd?: string }): L
   ];
 
   const foundMap = new Map<string, LocalFontInfo>();
+  const seenFilenames = new Set<string>();
 
   for (const dir of searchDirs) {
     if (!existsSync(dir)) continue;
@@ -126,6 +127,7 @@ export function scanLocalFonts(options?: { refresh?: boolean; cwd?: string }): L
     }
 
     for (const filename of files) {
+      if (seenFilenames.has(filename)) continue;
       const ext = extname(filename).toLowerCase();
       if (!SUPPORTED_EXTS.has(ext)) continue;
 
@@ -137,6 +139,8 @@ export function scanLocalFonts(options?: { refresh?: boolean; cwd?: string }): L
       } catch {
         continue;
       }
+
+      seenFilenames.add(filename);
 
       const rawBase = basename(filename, ext);
       const customMeta = manifest[filename] || manifest[rawBase] || {};

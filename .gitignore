@@ -2,6 +2,11 @@ node_modules
 dist
 data/uploads/*
 !data/uploads/.gitkeep
+public/fonts/*.ttf
+public/fonts/*.otf
+public/fonts/*.woff2
+public/fonts/*.woff
 .env
 .DS_Store
 *.log
+tmp

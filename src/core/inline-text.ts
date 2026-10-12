@@ -132,7 +132,7 @@ export function isPageMarkerLine(line: string): boolean {
     /^【第([一二三四五六七八九十百两\d]+)页】$/.test(trimmed) ||
     /^【Page\s*(\d+)】$/i.test(trimmed) ||
     /^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed) ||
-    /^<!--\s*(?:pagebreak|page-break|next-page)\s*-->$/i.test(trimmed)
+    /^<!--\s*(?:pagebreak|page-break|next-page|page(?::\s*\d+)?)\s*-->$/i.test(trimmed)
   );
 }
 
