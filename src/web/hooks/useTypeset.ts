@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { clearCache } from "@chenglou/pretext";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getDefaultConfig, runTypeset } from "../../core/engine";
 import { computeStageDimensions, getCanvasSpec } from "../../core/geometry";
 import { resolveImagePlacement } from "../../core/image-layout";
-import { applyTemplateImages } from "../../core/template";
+import { applyTemplateImages, validateTemplateAssets } from "../../core/template";
+import { backgroundImageLayout, restoreImageLayout, snapshotImageLayout, type ImageLayout } from "./image-layout";
 import {
   AlgorithmParams,
   AspectRatioType,
@@ -36,12 +38,14 @@ function resolvePresetImage(
 ): FlowImage {
   if (image.isAbsolute || !image.layoutPreset || image.layoutPreset === "custom") return image;
   const page = image.pageIndex || 1;
-  const indexOnPage = images.filter((item) => (item.pageIndex || 1) === page)
+  const indexOnPage = images.filter((item) => Boolean(item.templateAssetKey) === Boolean(image.templateAssetKey) && (item.pageIndex || 1) === page)
     .findIndex((item) => item.id === image.id);
   return resolveImagePlacement(image, indexOnPage, stageWidth, stageHeight);
 }
 
-export function useTypeset() {
+export function useTypeset(adminKey: string, isVerified: boolean | null) {
+  const [error, setError] = useState<string | null>(null);
+  const [fontVersion, setFontVersion] = useState(0);
   const [config, setConfig] = useState<TypesetConfig>(() => getDefaultConfig("longform-3-4"));
   const aspectRatio = config.aspectRatio;
   const [markdown, setMarkdown] = useState<string>(INITIAL_MARKDOWN);
@@ -60,18 +64,54 @@ export function useTypeset() {
     },
   ]);
   const [highlightWords, setHighlightWords] = useState<string[]>(["算法排版", "确定性", "空间秩序"]);
+  // 上传或应用模板时记录初始布局，背景切换另存一份勾选前的布局。
+  const initialImageLayouts = useRef(new Map(images.map((image) => [image.id, snapshotImageLayout(image)])));
+  const [backgroundLayouts, setBackgroundLayouts] = useState<Record<string, ImageLayout>>({});
 
   // Calculate typeset result synchronously (instant 60fps)
-  const result: TypesetResult = useMemo(() => {
-    return runTypeset({
-      markdown,
-      images,
-      config,
-      highlightWords,
-    });
-  }, [markdown, images, config, highlightWords]);
+  const { result, layoutError } = useMemo(() => {
+    try {
+      return { result: runTypeset({ markdown, images, config, highlightWords }), layoutError: null };
+    } catch (err) {
+      return {
+        result: { pages: [], pageCount: 0, canvasSpec: getCanvasSpec(config.aspectRatio), config } satisfies TypesetResult,
+        layoutError: err instanceof Error ? err.message : "排版失败",
+      };
+    }
+  }, [markdown, images, config, highlightWords, fontVersion]);
 
   useEffect(() => {
+    let active = true;
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      if (!active) return;
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        clearCache();
+        setFontVersion((version) => version + 1);
+      }, 0);
+    };
+    document.fonts.ready.then(refresh);
+    document.fonts.addEventListener("loadingdone", refresh);
+    window.addEventListener("typeset-fonts-loaded", refresh);
+    return () => {
+      active = false;
+      clearTimeout(refreshTimer);
+      document.fonts.removeEventListener("loadingdone", refresh);
+      window.removeEventListener("typeset-fonts-loaded", refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isVerified) return;
+    let active = true;
+    const headers = { "x-admin-key": adminKey };
+    const readTemplate = async (url: string) => {
+      const response = await fetch(url, { headers });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.message || data.error || "加载模板失败");
+      return data;
+    };
     const initFromUrlAndDefaults = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
@@ -90,45 +130,43 @@ export function useTypeset() {
 
         // 1. Handle explicit template loading
         if (urlTemplate) {
-          const res = await fetch(`/api/templates/resolve/${encodeURIComponent(urlTemplate)}`);
-          const data = await res.json();
+          const data = await readTemplate(`/api/templates/resolve/${encodeURIComponent(urlTemplate)}`);
           if (data.ok && data.template) {
-            loadTemplate(data.template);
+            if (active) loadTemplate(data.template);
             return;
           }
         }
 
         // 2. Handle slot loading
         if (urlSlot) {
-          const res = await fetch(`/api/templates/slots?account=${encodeURIComponent(urlAccount)}`);
-          const data = await res.json();
+          const data = await readTemplate(`/api/templates/slots?account=${encodeURIComponent(urlAccount)}`);
           if (data.ok && data.slots?.[urlSlot]?.template) {
-            loadTemplate(data.slots[urlSlot].template);
+            if (active) loadTemplate(data.slots[urlSlot].template);
             return;
           }
         }
 
         // 3. If no template or slot in URL, check slot defaults or global default
-        const res = await fetch(`/api/templates/slots?account=${encodeURIComponent(urlAccount)}`);
-        const data = await res.json();
+        const data = await readTemplate(`/api/templates/slots?account=${encodeURIComponent(urlAccount)}`);
         if (data.ok && data.slots?.newspic_content?.template) {
-          loadTemplate(data.slots.newspic_content.template);
+          if (active) loadTemplate(data.slots.newspic_content.template);
           return;
         }
 
         // 4. Fallback default
-        const defRes = await fetch("/api/templates/default");
-        const defData = await defRes.json();
+        const defData = await readTemplate("/api/templates/default");
         if (defData.ok && defData.template) {
-          loadTemplate(defData.template);
+          if (active) loadTemplate(defData.template);
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "加载模板失败");
       }
     };
 
+    setError(null);
     initFromUrlAndDefaults();
-  }, []);
+    return () => { active = false; };
+  }, [adminKey, isVerified]);
 
   const switchAspectRatio = (ratio: AspectRatioType) => {
     const spec = getCanvasSpec(ratio);
@@ -193,7 +231,7 @@ export function useTypeset() {
       config.algorithm.contentBottomGap,
     );
     const targetPage = image.pageIndex || 1;
-    const samePageImages = images.filter((im) => (im.pageIndex || 1) === targetPage);
+    const samePageImages = images.filter((im) => !im.templateAssetKey && (im.pageIndex || 1) === targetPage);
     const indexOnPage = samePageImages.length;
 
     const temp: FlowImage = {
@@ -208,14 +246,17 @@ export function useTypeset() {
       width: resolved.width,
       height: resolved.height,
     };
+    initialImageLayouts.current.set(newImage.id, snapshotImageLayout(newImage));
     setImages((prev) => [...prev, newImage]);
   };
 
   const updateImage = (id: string, partial: Partial<FlowImage>) => {
+    const previousBackground = partial.isAbsolute === false ? backgroundLayouts[id] : undefined;
+    if (previousBackground) clearBackgroundLayout(id);
     setImages((prev) => {
       const nextImages = prev.map((img) => {
         if (img.id !== id) return img;
-        const merged: FlowImage = { ...img, ...partial };
+        const merged = restoreImageLayout(img, { ...previousBackground, ...partial });
         if (partial.layoutPreset && partial.layoutPreset !== "custom") {
           // Clear stale preset coordinates when switching presets
           delete merged.x;
@@ -246,7 +287,40 @@ export function useTypeset() {
     });
   };
 
+  // 清除背景状态，避免恢复布局后复选框仍处于选中状态。
+  const clearBackgroundLayout = (id: string) => setBackgroundLayouts((prev) => {
+    const next = { ...prev };
+    delete next[id];
+    return next;
+  });
+
+  // 背景复选框只覆盖当前布局，取消时恢复勾选前的快照。
+  const toggleImageBackground = (id: string, enabled: boolean) => {
+    const image = images.find((item) => item.id === id);
+    if (!image) return;
+    if (enabled) {
+      if (backgroundLayouts[id]) return;
+      setBackgroundLayouts((prev) => ({ ...prev, [id]: snapshotImageLayout(image) }));
+      updateImage(id, backgroundImageLayout(config));
+    } else {
+      const layout = backgroundLayouts[id];
+      if (!layout) return;
+      clearBackgroundLayout(id);
+      setImages((prev) => prev.map((item) => item.id === id ? restoreImageLayout(item, layout) : item));
+    }
+  };
+
+  // 重置到本次上传或应用模板时的布局，不改内容和固定素材标识。
+  const resetImageLayout = (id: string) => {
+    const layout = initialImageLayouts.current.get(id);
+    if (!layout) return;
+    clearBackgroundLayout(id);
+    setImages((prev) => prev.map((image) => image.id === id ? restoreImageLayout(image, layout) : image));
+  };
+
   const removeImage = (id: string) => {
+    initialImageLayouts.current.delete(id);
+    clearBackgroundLayout(id);
     setImages((prev) => {
       const remaining = prev.filter((img) => img.id !== id);
       const spec = getCanvasSpec(aspectRatio);
@@ -282,9 +356,18 @@ export function useTypeset() {
   };
 
   const loadTemplate = (tpl: TypesetConfig) => {
-    setConfig(tpl);
-    if (tpl.images) {
-      setImages((prev) => applyTemplateImages(prev, tpl.images));
+    try {
+      validateTemplateAssets(tpl.images);
+      setConfig(tpl);
+      setBackgroundLayouts({});
+      setImages((prev) => {
+        const next = applyTemplateImages(prev, tpl.images);
+        initialImageLayouts.current = new Map(next.map((image) => [image.id, snapshotImageLayout(image)]));
+        return next;
+      });
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "模板素材无效");
     }
   };
 
@@ -296,6 +379,7 @@ export function useTypeset() {
   };
 
   return {
+    error: layoutError || error,
     aspectRatio,
     switchAspectRatio,
     config,
@@ -305,6 +389,9 @@ export function useTypeset() {
     images,
     addImage,
     updateImage,
+    toggleImageBackground,
+    resetImageLayout,
+    backgroundImageIds: Object.keys(backgroundLayouts),
     removeImage,
     moveImage,
     highlightWords,

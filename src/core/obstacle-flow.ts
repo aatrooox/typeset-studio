@@ -31,6 +31,10 @@ export interface PaginateOptions {
   textAlign?: "left" | "center" | "right";
   verticalAlign?: "top" | "center" | "bottom";
   initialPageNumber?: number;
+  targetFillRatio?: number;
+  pageFillRatios?: Record<number, number>;
+  templateImages?: FlowImage[];
+  lastPageNumber?: number;
 }
 
 /**
@@ -46,6 +50,7 @@ export function paginateBlocks(
 ): FlowPage[] {
   ensurePretextRuntime();
 
+  let textHeight = stageHeight;
   const gap = options.obstacleGap ?? 24;
   const imageLimit = options.pageImageLimit ?? 2;
 
@@ -75,7 +80,7 @@ export function paginateBlocks(
     const lines: PlacedLine[] = [];
     let y = initialY;
 
-    while (y + block.lineHeight <= stageHeight && lines.length < limit) {
+    while (y + block.lineHeight <= textHeight && lines.length < limit) {
       if (!layoutNextRichInlineLineRange(block.prepared, stageWidth, cursor)) {
         return { lines, cursor, y, done: true };
       }
@@ -154,6 +159,7 @@ export function paginateBlocks(
           highlight: originalRun.highlight,
           gapBefore: frag.gapBefore,
           occupiedWidth: frag.occupiedWidth,
+          letterSpacing: originalRun.letterSpacing,
         };
       });
 
@@ -209,16 +215,27 @@ export function paginateBlocks(
   const unassignedImages = allImages.filter((img) => !img.pageIndex);
   let segmentImagesPlaced = false;
 
-  const MAX_PAGES = options.maxPages ?? 50;
+  const MAX_PAGES = options.maxPages || 50;
+  // 固定素材独立选择，不占正文图片配额；重复素材不驱动新分页。
+  const templateImages = options.templateImages || [];
+  const lastTemplatePage = Math.max(0, ...templateImages.filter((image) => !image.repeatEveryPage).map((image) => image.pageIndex || 1));
+  const lastPageNumber = Math.max(options.lastPageNumber || 0, isSegmentMode ? 0 : lastTemplatePage);
+  const templatesForPage = (page: number) => templateImages.filter((image) => image.repeatEveryPage || (image.pageIndex || 1) === page);
+  // 显式图片页之间允许空页，不能提前结束丢图。
+  const lastImagePage = isSegmentMode ? 0 : Math.max(0, ...allImages.map((image) => image.pageIndex || 0));
+  const hasRemaining = () => blockIndex < prepared.length ||
+    (!isSegmentMode && (unassignedIndex < unassignedImages.length || initialPageNumber + pages.length <= lastImagePage)) ||
+    (isSegmentMode && !segmentImagesPlaced && (allImages.length > 0 || templatesForPage(initialPageNumber).length > 0)) ||
+    initialPageNumber + pages.length <= lastPageNumber;
 
   // Pagination loop
-  while (
-    pages.length < MAX_PAGES &&
-    (blockIndex < prepared.length ||
-      (!isSegmentMode && unassignedIndex < unassignedImages.length) ||
-      (isSegmentMode && !segmentImagesPlaced && allImages.length > 0))
-  ) {
+  while (pages.length < MAX_PAGES && hasRemaining()) {
     const pageNum = initialPageNumber + pages.length;
+    const targetFill = options.pageFillRatios?.[pageNum] ?? options.targetFillRatio ?? 1;
+    if (!Number.isFinite(targetFill) || targetFill <= 0 || targetFill > 1) {
+      throw new RangeError("targetFillRatio must be greater than 0 and at most 1");
+    }
+    textHeight = stageHeight * targetFill;
     let targetImages: FlowImage[] = [];
 
     if (isSegmentMode) {
@@ -236,7 +253,7 @@ export function paginateBlocks(
       }
     }
 
-    const images = targetImages.map((img, idx) =>
+    const images = [...targetImages, ...templatesForPage(pageNum)].map((img, idx) =>
       resolveImagePlacement(img, idx, stageWidth, stageHeight),
     );
     const lines: FlowLine[] = [];
@@ -296,15 +313,11 @@ export function paginateBlocks(
     if (
       blockIndex === initialBlockIndex &&
       compareCursor(cursor, initialCursor) === 0 &&
-      !images.length
+      !targetImages.length && !images.some((image) => !image.isAbsolute && !image.repeatEveryPage) && blockIndex < prepared.length
     ) {
-      // Emergency escape to prevent infinite loop
-      break;
+      throw new RangeError("Text cannot fit in the available page area; reduce font size or enlarge the safe area");
     }
 
-    if (!lines.length && !images.length) {
-      break;
-    }
 
     const textBottom = lines.reduce((max, l) => Math.max(max, l.y + l.lineHeight), 0);
     const flowImages = images.filter((img) => !img.isAbsolute);
@@ -354,5 +367,6 @@ export function paginateBlocks(
     });
   }
 
+  if (hasRemaining()) throw new RangeError(`Content exceeds maxPages=${MAX_PAGES}; no content was discarded`);
   return pages;
 }

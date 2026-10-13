@@ -2,6 +2,7 @@ import { createCanvas, loadImage, type Canvas } from "@napi-rs/canvas";
 import { existsSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { drawPageToContext } from "./canvas-draw";
+import { resolveDataDir } from "./data-dir";
 import { registerServerFonts } from "./font-loader";
 import { CanvasSpec, FlowPage, TypesetConfig, TypesetResult } from "./types";
 
@@ -18,7 +19,7 @@ async function safeLoadImage(src: string): Promise<any | null> {
   if (!src) return null;
   try {
     if (src.startsWith("/uploads/") || src.startsWith("uploads/")) {
-      const localPath = join(process.cwd(), "data", src.replace(/^\//, ""));
+      const localPath = join(resolveDataDir(), src.replace(/^\//, ""));
       if (existsSync(localPath)) {
         return await loadImage(localPath);
       }

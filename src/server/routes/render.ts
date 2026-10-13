@@ -10,6 +10,12 @@ import {
 } from "./templates";
 
 export const renderRouter = new Hono();
+renderRouter.onError((error, c) => {
+  if (error.message.startsWith("模板素材 ")) return c.json({ ok: false, error: error.message }, 422);
+  if (error instanceof RangeError) return c.json({ ok: false, error: error.message }, 400);
+  console.error("渲染失败", error);
+  return c.json({ ok: false, error: "Render failed" }, 500);
+});
 
 export interface RenderRequestBody {
   result?: TypesetResult;
@@ -26,7 +32,16 @@ export interface RenderRequestBody {
   text?: string;
   images?: FlowImage[];
   highlightWords?: string[];
-  config?: Partial<TypesetConfig>;
+  config?: Omit<Partial<TypesetConfig>, "algorithm" | "theme" | "typography"> & {
+    algorithm?: Partial<TypesetConfig["algorithm"]>;
+    theme?: Partial<TypesetConfig["theme"]>;
+    typography?: Partial<TypesetConfig["typography"]>;
+  };
+  minPages?: number;
+  maxPages?: number;
+  pageFillRatios?: Record<number, number>;
+  templateImageOverrides?: Record<string, string>;
+  preserveTemplateStyle?: boolean;
 }
 
 function inferSlot(route?: string, kind?: string, aspectRatio?: string): TemplateSlot | undefined {
@@ -74,6 +89,7 @@ export function resolveTypesetResult(body: RenderRequestBody): {
   let baseConfig: TypesetConfig | null = null;
   if (targetKey) {
     baseConfig = findTemplateByKeyOrName(targetKey);
+    if (!baseConfig) throw new RangeError(`Template '${targetKey}' not found`);
   }
 
   // 2. Resolve by slot and account
@@ -99,35 +115,56 @@ export function resolveTypesetResult(body: RenderRequestBody): {
     baseConfig = getDefaultConfig(isCover ? "wechat-cover-2.35" : "longform-3-4");
   }
 
+  // 插件保留模板样式；直接 API 调用仍允许显式覆盖配置。
+  const overrides = body.preserveTemplateStyle && baseConfig.id ? {} : body.config;
+
   // Merge any config overrides
   const effectiveConfig: TypesetConfig = {
     ...baseConfig,
-    ...(body.config || {}),
+    ...(overrides || {}),
     algorithm: {
       ...baseConfig.algorithm,
-      ...(body.config?.algorithm || {}),
+      ...(overrides?.algorithm || {}),
     },
     theme: {
       ...baseConfig.theme,
-      ...(body.config?.theme || {}),
+      ...(overrides?.theme || {}),
     },
     typography: {
       ...baseConfig.typography,
-      ...(body.config?.typography || {}),
+      ...(overrides?.typography || {}),
     },
+    chrome: { ...baseConfig.chrome, ...overrides?.chrome },
   };
 
-  const inputImages = body.images;
-  const resolvedImages = inputImages && inputImages.length > 0
-    ? (effectiveConfig.images ? applyTemplateImages(inputImages, effectiveConfig.images) : inputImages)
-    : (effectiveConfig.images || []);
+  const resolvedImages = applyTemplateImages(body.images || [], effectiveConfig.images, body.templateImageOverrides);
 
-  const result = runTypeset({
-    markdown,
-    images: resolvedImages,
-    config: effectiveConfig,
-    highlightWords: body.highlightWords || [],
-  });
+  // 封面主题先使用目标字号，单页放不下时缩到契约允许的最小字号。
+  let result: TypesetResult;
+  while (true) {
+    try {
+      result = runTypeset({
+        markdown, images: resolvedImages, config: effectiveConfig,
+        highlightWords: body.highlightWords || [],
+        minPages: body.minPages, maxPages: body.maxPages, pageFillRatios: body.pageFillRatios,
+      });
+      break;
+    } catch (error) {
+      const theme = effectiveConfig.coverTheme;
+      if (!theme || body.kind !== "cover" || !(error instanceof Error) ||
+        !/exceeds maxPages|cannot fit/.test(error.message)) throw error;
+      const title = theme.typography.title;
+      if (!Number.isFinite(title.fontSize) || !Number.isFinite(title.minFontSize) || title.minFontSize <= 0) {
+        throw new RangeError("Invalid cover theme font size");
+      }
+      if (title.fontSize <= title.minFontSize) throw error;
+      effectiveConfig.coverTheme = {
+        ...theme, typography: { ...theme.typography, title: {
+          ...title, fontSize: Math.max(title.minFontSize, Math.floor(title.fontSize * 0.9)),
+        } },
+      };
+    }
+  }
 
   return {
     templateId: baseConfig.id,
@@ -162,7 +199,7 @@ renderRouter.post("/png", async (c) => {
   }
 
   const pngBuffer = await renderPageToPng(targetPage, result.canvasSpec, result.config, result.pageCount);
-  return new Response(pngBuffer, {
+  return new Response(new Uint8Array(pngBuffer), {
     status: 200,
     headers: {
       "Content-Type": "image/png",
@@ -186,6 +223,12 @@ renderRouter.post("/export", async (c) => {
       pageNumber: item.pageNumber,
       dataUrl: `data:image/png;base64,${item.buffer.toString("base64")}`,
       byteLength: item.buffer.length,
+      imageIds: result.pages.find((page) => page.pageNumber === item.pageNumber)!.images.map((image) => image.id),
+      bodyImageCount: result.pages.find((page) => page.pageNumber === item.pageNumber)!.images.filter((image) => !image.templateAssetKey).length,
+      bodyImageSources: result.pages.find((page) => page.pageNumber === item.pageNumber)!.images.filter((image) => !image.templateAssetKey).map((image) => image.src),
+      bodyImageIds: result.pages.find((page) => page.pageNumber === item.pageNumber)!.images.filter((image) => !image.templateAssetKey).map((image) => image.id),
+      imageCount: result.pages.find((page) => page.pageNumber === item.pageNumber)!.images.length,
+      imageSources: result.pages.find((page) => page.pageNumber === item.pageNumber)!.images.map((image) => image.src),
     })),
   });
 });

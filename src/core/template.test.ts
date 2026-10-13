@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { applyTemplateImages } from "./template";
+import { applyTemplateImages, validateTemplateAssets } from "./template";
 import { FlowImage } from "./types";
 
 describe("applyTemplateImages - Template Image Persistence & Intersection Logic", () => {
@@ -175,5 +175,42 @@ describe("applyTemplateImages - Template Image Persistence & Intersection Logic"
 
     const result = applyTemplateImages(actualImages, undefined);
     expect(result).toEqual(actualImages);
+  });
+});
+
+// 固定素材不能占普通图片布局位置，也不能随普通图片一起替换。
+describe("Fixed template assets", () => {
+  const fixed: FlowImage = { id: "background", src: "bg.png", alt: "背景", templateAssetKey: "background", isAbsolute: true, x: -50, y: -50, width: 1080, height: 1440, zIndex: 0 };
+  const slot: FlowImage = { id: "slot", src: "sample.png", alt: "示例", x: 100, y: 200, width: 300, height: 200, layoutPreset: "custom" };
+  const actual: FlowImage = { id: "actual", src: "new.png", alt: "新图" };
+
+  it("keeps fixed sources and maps normal images only to normal slots", () => {
+    const result = applyTemplateImages([actual], [fixed, slot]);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ ...actual, x: 100, y: 200, width: 300 });
+    expect(result[1]).toEqual(fixed);
+  });
+
+  it("replaces only the named source without mutating the template", () => {
+    const result = applyTemplateImages([actual], [fixed, slot], { background: "replacement.png" });
+    expect(result[1]).toEqual({ ...fixed, src: "replacement.png" });
+    expect(fixed.src).toBe("bg.png");
+    expect(applyTemplateImages([], [{ ...fixed, templateAssetKey: "constructor" }])[0].src).toBe("bg.png");
+    expect(() => applyTemplateImages([], [fixed], { missing: "new.png" })).toThrow("未知模板素材");
+    expect(() => applyTemplateImages([], [fixed, { ...fixed, id: "duplicate" }])).toThrow("重复");
+  });
+
+  it("reapplying and switching templates removes old fixed layers", () => {
+    const first = applyTemplateImages([actual], [fixed, slot]);
+    expect(applyTemplateImages(first, [fixed, slot])).toEqual(first);
+    expect(applyTemplateImages(first, [slot]).some((image) => image.templateAssetKey)).toBe(false);
+    expect(applyTemplateImages(first, [])).toEqual([first[0]]);
+    expect(applyTemplateImages([], [fixed])).toEqual([fixed]);
+  });
+
+  it("only allows repeating fixed assets in absolute mode", () => {
+    expect(() => validateTemplateAssets([{ ...fixed, isAbsolute: false, repeatEveryPage: true }])).toThrow("每页重复仅支持自由定位模式");
+    expect(() => validateTemplateAssets([{ ...fixed, isAbsolute: false, repeatEveryPage: false }])).not.toThrow();
+    expect(() => validateTemplateAssets([{ ...fixed, repeatEveryPage: true }])).not.toThrow();
   });
 });

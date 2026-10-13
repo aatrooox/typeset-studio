@@ -1,9 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { renderTypesetResultToPngs } from "./core/canvas-renderer";
-import { scanLocalFonts } from "./core/font-loader";
-import type { FlowImage } from "./core/types";
-import { resolveTypesetResult, type RenderRequestBody } from "./server/routes/render";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { extname, join } from "node:path";
+import type { FlowImage, PipelineCoverTheme } from "./core/types";
+import type { RenderRequestBody } from "./server/routes/render";
 
 // ── Typeset Studio & zzhub-pipeline compatible types ──────────────
 
@@ -15,8 +13,14 @@ export interface PipelinePluginDoctorCheck {
 }
 
 export interface ImageRenderInput {
-  coverTheme?: any;
-  onProgress?: (progress: any) => void;
+  /** Studio 模板与任务素材替换，旧插件可忽略。 */
+  studioTemplates?: { cover?: string; content?: string };
+  templateImageOverrides?: { cover?: Record<string, string>; content?: Record<string, string> };
+  coverTheme?: PipelineCoverTheme;
+  onProgress?: (progress: {
+    stage: string; message?: string; current?: number; total?: number;
+    unit?: "pages" | "files" | "bytes" | "targets"; route?: string; account?: string;
+  }) => void;
   state: {
     route: {
       account?: string;
@@ -34,6 +38,7 @@ export interface ImageRenderInput {
         pagination_mode?: string;
         min_pages?: number;
         max_pages?: number;
+        target_fill_ratio?: number;
         page_specs?: Array<{
           page: number;
           image_markers: string[];
@@ -141,7 +146,7 @@ function mapBodyImages(
 // ── Typeset Studio Pipeline Adapter ───────────────────────────────
 
 // 配置远程地址后，由独立服务负责图片渲染。
-const REMOTE_STUDIO_URL = process.env.TYPESET_STUDIO_URL?.replace(/\/$/, "");
+const remoteStudioUrl = () => process.env.TYPESET_STUDIO_URL?.replace(/\/$/, "");
 
 // 下载远程生成的页面，并写入流水线输出目录。
 async function renderRemoteBatch(
@@ -151,23 +156,53 @@ async function renderRemoteBatch(
   route: "wechat-article" | "wechat-newspic",
   kind: "cover" | "page",
 ): Promise<ImageRenderOutput> {
+  // 远程进程无法读取客户端文件，发送图片字节并保留来源摘要映射。
+  const sources = new Map<string, string>();
+  const originalImages = new Map([...(body.config?.images || []), ...(body.images || [])].map((image) => [image.id, image.src]));
+  const transfer = async (src: string) => {
+    if (/^(https?:|data:)/i.test(src) || src.startsWith("/uploads/")) return src;
+    const bytes = await readFile(src);
+    const mime = ({ ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".webp": "image/webp", ".gif": "image/gif" } as Record<string, string>)[extname(src).toLowerCase()] || "image/png";
+    const dataUrl = `data:${mime};base64,${bytes.toString("base64")}`;
+    sources.set(dataUrl, src);
+    return dataUrl;
+  };
+  const requestBody = structuredClone(body);
+  for (const image of requestBody.images || []) image.src = await transfer(image.src);
+  // 保留模板样式时，备用配置不参与正常模板渲染，也不读取其本地素材。
+  if (!requestBody.preserveTemplateStyle) {
+    for (const image of requestBody.config?.images || []) image.src = await transfer(image.src);
+  }
+  for (const [key, src] of Object.entries(requestBody.templateImageOverrides || {})) {
+    try {
+      requestBody.templateImageOverrides![key] = await transfer(src);
+    } catch (error) {
+      throw new Error(`模板素材 ${key} 加载失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  const coverTheme = requestBody.config?.coverTheme;
+  for (const image of requestBody.preserveTemplateStyle ? [] : [coverTheme?.background.image, coverTheme?.decoration.image]) {
+    if (image) image.src = await transfer(image.src);
+  }
   const res = await fetch(`${studioUrl}/api/render/export`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", "X-Admin-Key": process.env.TYPESET_ADMIN_KEY || "" },
+    body: JSON.stringify(requestBody),
   });
   if (!res.ok) {
-    throw new Error(`Cloud Typeset Studio returned HTTP ${res.status}: ${res.statusText}`);
+    const detail = (await res.text()).slice(0, 500);
+    throw new Error(`Cloud Typeset Studio returned HTTP ${res.status}: ${detail || res.statusText}`);
   }
   const data = (await res.json()) as {
     ok: boolean;
     pageCount: number;
-    pages: Array<{ pageNumber: number; dataUrl: string }>;
+    pages: Array<{ pageNumber: number; dataUrl: string; imageCount: number; imageSources: string[]; imageIds: string[]; bodyImageCount: number; bodyImageSources: string[]; bodyImageIds: string[] }>;
   };
   const assets: RenderAsset[] = [];
   const pagesSummary: ImageRenderOutput["pages"] = [];
 
-  for (const pageItem of data.pages) {
+  if (!data.ok || !Array.isArray(data.pages)) throw new Error("Invalid Typeset Studio export response");
+  for (const pageItem of (kind === "cover" ? data.pages.slice(0, 1) : data.pages)) {
     const pageNum = pageItem.pageNumber;
     const base64Data = pageItem.dataUrl.replace(/^data:image\/png;base64,/, "");
     const buffer = Buffer.from(base64Data, "base64");
@@ -184,12 +219,12 @@ async function renderRemoteBatch(
     });
     pagesSummary.push({
       page: pageNum,
-      imageCount: 0,
-      imageSources: [],
+      imageCount: pageItem.bodyImageCount,
+      imageSources: pageItem.bodyImageSources.map((src, index) => originalImages.get(pageItem.bodyImageIds[index]) || sources.get(src) || src),
     });
   }
 
-  return { assets, pageCount: data.pageCount, pages: pagesSummary };
+  return { assets, pageCount: assets.length, pages: pagesSummary };
 }
 
 // 本地渲染与远程服务共用请求，保留各自的图片输出方式。
@@ -199,6 +234,9 @@ async function renderLocalBatch(
   route: RenderAsset["route"],
   kind: RenderAsset["kind"],
 ): Promise<ImageRenderOutput> {
+  const [{ resolveTypesetResult }, { renderTypesetResultToPngs }] = await Promise.all([
+    import("./server/routes/render"), import("./core/canvas-renderer"),
+  ]);
   const { result } = resolveTypesetResult(body);
   const pngs = await renderTypesetResultToPngs(result);
   const outputs = kind === "cover" ? pngs.slice(0, 1) : pngs;
@@ -216,7 +254,7 @@ async function renderLocalBatch(
     const path = join(outputDir, filename);
     await writeFile(path, output.buffer);
     assets.push({ kind, route, path, ...(kind === "page" ? { index: pageNumber } : {}) });
-    const images = result.pages[index].images;
+    const images = result.pages[index].images.filter((image) => !image.templateAssetKey);
     pages.push({
       page: pageNumber,
       imageCount: images.length,
@@ -233,14 +271,18 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
   async doctor(): Promise<PipelinePluginDoctorCheck[]> {
     const checks: PipelinePluginDoctorCheck[] = [];
 
+    const REMOTE_STUDIO_URL = remoteStudioUrl();
     if (REMOTE_STUDIO_URL) {
       try {
-        const res = await fetch(`${REMOTE_STUDIO_URL}/api/health`);
-        const data = (await res.json()) as { name?: string };
+        const res = await fetch(`${REMOTE_STUDIO_URL}/api/auth/verify`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: process.env.TYPESET_ADMIN_KEY || "" }),
+        });
+        const data = (await res.json()) as { ok?: boolean };
         checks.push({
           name: "remote-service",
-          ok: res.ok,
-          message: `Connected to Cloud Typeset Studio at ${REMOTE_STUDIO_URL} (${data.name || "active"})`,
+          ok: res.ok && data.ok === true,
+          message: data.ok ? `Authenticated with Typeset Studio at ${REMOTE_STUDIO_URL}` : "Remote admin key is missing or invalid",
         });
       } catch (err) {
         checks.push({
@@ -273,6 +315,7 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
     }
 
     try {
+      const { scanLocalFonts } = await import("./core/font-loader");
       const localFonts = scanLocalFonts();
       checks.push({
         name: "local-fonts",
@@ -295,15 +338,35 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
     await mkdir(outputDir, { recursive: true });
     if (route === "blog") return { assets: [], pageCount: 0, pages: [] };
 
+    const REMOTE_STUDIO_URL = remoteStudioUrl();
     const account = state.route.account || "default";
+    const saved = state.intent?.newspic_render;
+    const pageSpecs = input.pageSpecs ?? saved?.page_specs?.map((spec) => ({
+      page: spec.page, imageMarkers: spec.image_markers, imageLayout: spec.image_layout, targetFillRatio: spec.target_fill_ratio,
+    }));
+    const visual = input.accountVisualParams || {};
+    const stateVisual = state.route.account_visual_params;
+    const footer = visual.footer ?? stateVisual?.footer;
+    const bg = visual.bg ?? stateVisual?.bg;
+    const highlight = visual.highlight ?? stateVisual?.highlight;
+    const fallbackIcon = visual.fallbackIcon ?? stateVisual?.fallback_icon;
+    // pipeline 的模式标记只选择分页方式，具体模板名才参与模板解析。
+    const template = ["wechat-cover-split", "poster-3-4", "longform-3-4"].includes(input.template || "") ? undefined : input.template;
+    input.onProgress?.({ stage: "typeset", message: "开始排版", route, account });
     const title = cleanTitle(input.title || state.metadata?.title || "");
     const common: RenderRequestBody = {
       account,
       title,
-      template: input.template,
-      images: mapBodyImages(input.bodyImages, input.pageSpecs),
+      preserveTemplateStyle: true,
+      images: mapBodyImages(input.bodyImages, pageSpecs),
       highlightWords: state.route.highlight_words || [],
-      config: { footerText: input.accountVisualParams?.footer, watermarkText: `@${account}` },
+      config: {
+        ...(footer !== undefined ? { footerText: footer } : {}),
+        watermarkText: `@${account}`,
+        ...((bg || highlight) ? { theme: {
+          ...(bg ? { bgColor: bg } : {}), ...(highlight ? { accentColor: highlight } : {}),
+        } } : {}),
+      },
     };
     const articleCover = route === "wechat-article";
     const renderRoute = articleCover ? "wechat-article" : "wechat-newspic";
@@ -314,13 +377,34 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
         ? renderRemoteBatch(REMOTE_STUDIO_URL, body, outputDir, renderRoute, kind)
         : renderLocalBatch(body, outputDir, renderRoute, kind);
 
+    const coverTheme = input.coverTheme;
+    const coverConfig = { ...common.config, algorithm: { targetFillRatio: 1 } };
+    if (coverTheme) {
+      coverConfig.coverTheme = coverTheme;
+      if (footer) coverConfig.chrome = { showHeader: false, showFooter: true, showFooterDivider: false, showFooterText: true };
+      coverConfig.algorithm = { ...coverTheme.layout, targetFillRatio: 1 };
+      coverConfig.theme = {
+        bgColor: coverTheme.background.fill.type === "solid" ? coverTheme.background.fill.color : "transparent",
+        textColor: coverTheme.colors.text, headingColor: coverTheme.colors.text,
+        accentColor: coverTheme.colors.accent, quoteColor: coverTheme.colors.muted,
+        captionColor: coverTheme.colors.muted, watermarkColor: coverTheme.colors.muted,
+      };
+    }
+    const firstPageImages = (common.images || []).filter((image) => !image.pageIndex || image.pageIndex === 1)
+      .map((image) => ({ ...image, pageIndex: 1 }));
+    if (fallbackIcon) coverConfig.images = [{
+      id: "account_icon", src: fallbackIcon, alt: "账号标识", isAbsolute: true,
+      x: 0, y: 0, width: 48, height: 48, zIndex: 20, pageIndex: 1,
+      templateAssetKey: "account_icon",
+    }];
     const cover = await renderBatch({
-      ...common,
-      route: renderRoute,
-      slot: articleCover ? "article_cover" : "newspic_cover",
-      ...(articleCover ? {} : { kind: "cover" }),
-      markdown: `# ${title}`,
+      ...common, config: coverConfig, images: firstPageImages,
+      template: input.studioTemplates?.cover || template,
+      templateImageOverrides: input.templateImageOverrides?.cover,
+      route: renderRoute, slot: articleCover ? "article_cover" : "newspic_cover",
+      kind: "cover", maxPages: 1, markdown: `# ${title}`,
     }, "cover");
+    input.onProgress?.({ stage: "cover", message: "封面已生成", current: 1, total: 1, unit: "pages", route, account });
     const paginationMode = input.template === "longform-3-4"
       ? "multi"
       : input.template === "poster-3-4"
@@ -331,10 +415,17 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
     const content = await renderBatch({
       ...common,
       route: "wechat-newspic",
+      template: input.studioTemplates?.content || template,
+      templateImageOverrides: input.templateImageOverrides?.content,
       kind: "content",
       slot: "newspic_content",
       markdown: bodyText || `# ${title}`,
+      config: { ...common.config, ...(saved?.target_fill_ratio != null ? { algorithm: { targetFillRatio: saved.target_fill_ratio } } : {}) },
+      minPages: input.minPages ?? saved?.min_pages,
+      maxPages: input.maxPages ?? saved?.max_pages,
+      pageFillRatios: Object.fromEntries((pageSpecs || []).filter((spec) => spec.targetFillRatio != null).map((spec) => [spec.page, spec.targetFillRatio!])),
     }, "page");
+    input.onProgress?.({ stage: "content", message: "正文已生成", current: content.pageCount, total: content.pageCount, unit: "pages", route, account });
     return { ...content, assets: [...cover.assets, ...content.assets] };
   },
 };

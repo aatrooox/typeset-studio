@@ -28,6 +28,9 @@ interface EditorSidebarProps {
   highlightWords: string[];
   onHighlightWordsChange: (words: string[]) => void;
   adminKey: string;
+  onToggleBackground: (id: string, enabled: boolean) => void;
+  onResetImageLayout: (id: string) => void;
+  backgroundImageIds: string[];
 }
 
 export const EditorSidebar: React.FC<EditorSidebarProps> = ({
@@ -35,6 +38,9 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
   onMarkdownChange,
   images,
   onAddImage,
+  onToggleBackground,
+  onResetImageLayout,
+  backgroundImageIds,
   onUpdateImage,
   onRemoveImage,
   onMoveImage,
@@ -340,6 +346,35 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                     >
                       自由图层 (Absolute)
                     </button>
+                  </div>
+
+                  <div className="flex flex-col gap-2 text-[11px]">
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={img.templateAssetKey !== undefined} onChange={(event) => onUpdateImage(img.id, {
+                        templateAssetKey: event.target.checked ? `asset_${img.id.replace(/[^a-zA-Z0-9_-]/g, "_")}` : undefined,
+                        repeatEveryPage: false,
+                      })} />
+                      固定模板素材
+                    </label>
+                    {img.templateAssetKey !== undefined && <>
+                      <label className="flex flex-col gap-1">素材标识
+                        <input aria-label="素材标识" value={img.templateAssetKey} onChange={(event) => onUpdateImage(img.id, { templateAssetKey: event.target.value })}
+                          className="w-full bg-white dark:bg-[#181818] border border-[#d4d4d4] dark:border-[#262626] rounded px-1.5 py-1" />
+                      </label>
+                      {images.some((other) => other.id !== img.id && other.templateAssetKey === img.templateAssetKey) &&
+                        <span role="alert" className="text-red-600">素材标识不能重复</span>}
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" disabled={!img.isAbsolute} checked={Boolean(img.isAbsolute && img.repeatEveryPage)} onChange={(event) => onUpdateImage(img.id, { repeatEveryPage: event.target.checked })} />
+                        每页重复
+                      </label>
+                      {!img.isAbsolute && <span className="text-[#888888]">每页重复仅支持自由图层，避免阻塞文字排版。</span>}
+                      <span className="text-[#888888]">默认保留此图，仅按素材标识明确替换。</span>
+                    </>}
+                    {img.isAbsolute && <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={backgroundImageIds.includes(img.id)} onChange={(event) => onToggleBackground(img.id, event.target.checked)} />
+                      设为整页背景
+                    </label>}
+                    <button type="button" onClick={() => onResetImageLayout(img.id)} title="恢复上传或应用模板时的尺寸、位置和图层设置" className="rounded border border-[#d4d4d4] dark:border-[#333333] px-2 py-1.5 hover:bg-[#eeeeee] dark:hover:bg-[#222222]">重置布局</button>
                   </div>
 
                   {!img.isAbsolute ? (

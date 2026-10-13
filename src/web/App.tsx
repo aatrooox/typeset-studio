@@ -9,7 +9,9 @@ import { useAuth } from "./hooks/useAuth";
 import { useTypeset } from "./hooks/useTypeset";
 
 export const App: React.FC = () => {
+  const { adminKey, setAdminKey, isVerified } = useAuth();
   const {
+    error: templateError,
     aspectRatio,
     switchAspectRatio,
     config,
@@ -18,6 +20,9 @@ export const App: React.FC = () => {
     images,
     addImage,
     updateImage,
+    toggleImageBackground,
+    resetImageLayout,
+    backgroundImageIds,
     removeImage,
     moveImage,
     highlightWords,
@@ -29,9 +34,7 @@ export const App: React.FC = () => {
     updateSafeArea,
     loadTemplate,
     setConfig,
-  } = useTypeset();
-
-  const { adminKey, setAdminKey, isVerified } = useAuth();
+  } = useTypeset(adminKey, isVerified);
 
   // Default to Light Mode per user requirement
   const [themeMode, setThemeMode] = useState<"light" | "dark">(() => {
@@ -179,6 +182,9 @@ export const App: React.FC = () => {
     setIsExporting(true);
     try {
       const canvasElements = document.querySelectorAll<HTMLCanvasElement>("canvas.typeset-page");
+      if ([...canvasElements].some((canvas) => canvas.dataset.renderState !== "ready")) {
+        throw new Error("画布尚未完成绘制，请检查素材或稍后再导出");
+      }
       if (canvasElements.length > 0) {
         let exportSucceeded = true;
         for (let i = 0; i < canvasElements.length; i++) {
@@ -229,7 +235,7 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Export failed:", err);
-      alert("导出失败，请检查网络或后端服务连接");
+      alert(err instanceof Error ? err.message : "导出失败，请检查网络或后端服务连接");
     } finally {
       setIsExporting(false);
     }
@@ -255,6 +261,8 @@ export const App: React.FC = () => {
         onToggleThemeMode={toggleThemeMode}
       />
 
+      {templateError && <div role="alert" className="px-4 py-2 text-sm text-red-600">{templateError}</div>}
+
       {/* Main Workspace (3-column layout) */}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         {/* Left: Content Editor Sidebar */}
@@ -263,6 +271,9 @@ export const App: React.FC = () => {
           onMarkdownChange={setMarkdown}
           images={images}
           onAddImage={addImage}
+          onToggleBackground={toggleImageBackground}
+          onResetImageLayout={resetImageLayout}
+          backgroundImageIds={backgroundImageIds}
           onUpdateImage={updateImage}
           onRemoveImage={removeImage}
           onMoveImage={moveImage}

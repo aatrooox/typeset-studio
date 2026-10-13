@@ -33,6 +33,26 @@ describe("Project-Local Fonts Scanning & Registration", () => {
     expect(Array.isArray(data.fonts)).toBe(true);
   });
 
+  it("decodes Unicode SFNT family records without modifying the source", () => {
+    const family = "测试字体";
+    const name = Buffer.from(family, "utf16le").swap16();
+    const fixture = Buffer.alloc(46 + name.length);
+    fixture.writeUInt32BE(0x10000, 0);
+    fixture.writeUInt16BE(1, 4);
+    fixture.write("name", 12);
+    fixture.writeUInt32BE(28, 20);
+    fixture.writeUInt16BE(1, 30);
+    fixture.writeUInt16BE(18, 32);
+    fixture.writeUInt16BE(3, 34);
+    fixture.writeUInt16BE(16, 40);
+    fixture.writeUInt16BE(name.length, 42);
+    name.copy(fixture, 46);
+    const path = join(isolatedFontsDir, "Unicode.ttf");
+    writeFileSync(path, fixture);
+    expect(readFontFamilyName(path)).toBe(family);
+    expect(readFontFamilyName(path)).toBe(family);
+  });
+
   it("recognizes fonts.json manifest metadata when present", () => {
     const dummyFontPath = join(isolatedFontsDir, "MockCustomFont.ttf");
     const manifestPath = join(isolatedFontsDir, "fonts.json");

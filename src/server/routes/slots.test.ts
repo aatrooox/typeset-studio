@@ -87,3 +87,99 @@ describe("Template Slots & Fallback Compatibility", () => {
     expect(data.result.pageCount).toBeGreaterThanOrEqual(1);
   });
 });
+
+// 鉴权、模板覆盖和数据目录共用隔离测试环境。
+describe("Storage and authentication regressions", () => {
+  it("rejects forged local Hosts and never returns a remote key", async () => {
+    for (const host of ["localhost.attacker.example", "localhost", "127.0.0.1"]) {
+      const response = await app.request("http://remote.example/api/templates", { headers: { host } });
+      expect(response.status).toBe(401);
+      const keyResponse = await app.request("http://remote.example/api/auth/current-key", { headers: { host } });
+      expect(keyResponse.status).toBe(403);
+      expect(await keyResponse.text()).not.toContain(adminKey);
+    }
+    const untrustedOrigin = await app.request("http://localhost/api/auth/current-key", {
+      headers: { host: "localhost", origin: "https://attacker.example" },
+    }, { peerAddress: "127.0.0.1" });
+    expect(untrustedOrigin.status).toBe(403);
+    const local = await app.request("http://localhost/api/auth/current-key", {
+      headers: { host: "localhost", origin: "http://localhost:5173" },
+    }, { peerAddress: "127.0.0.1" });
+    expect(local.status).toBe(200);
+  });
+
+  it("rejects traversal for template CRUD and resolver paths", async () => {
+    const template = { ...(await (await app.request("/api/templates/tpl_wechat_cover_minimal", { headers: authHeaders })).json()).template, id: "../escaped" };
+    const save = await app.request("/api/templates", {
+      method: "POST", headers: authHeaders, body: JSON.stringify(template),
+    });
+    expect(save.status).toBe(400);
+    for (const method of ["GET", "DELETE"]) {
+      const response = await app.request("/api/templates/..%2Fescaped", { method, headers: authHeaders });
+      expect(response.status).toBe(400);
+    }
+    const resolve = await app.request("/api/templates/resolve/..%2Fescaped", { headers: authHeaders });
+    expect(resolve.status).toBe(404);
+  });
+
+  it("uses saved builtin overrides and does not recreate deleted templates", async () => {
+    const id = "tpl_longform_vintage_news";
+    const original = (await (await app.request(`/api/templates/${id}`, { headers: authHeaders })).json()).template;
+    try {
+      const save = await app.request("/api/templates", {
+        method: "POST", headers: authHeaders,
+        body: JSON.stringify({ ...original, footerText: "磁盘覆盖" }),
+      });
+      expect(save.status).toBe(200);
+      const resolved = await (await app.request(`/api/templates/resolve/${id}`, { headers: authHeaders })).json();
+      expect(resolved.template.footerText).toBe("磁盘覆盖");
+      const deleted = await app.request(`/api/templates/${id}`, { method: "DELETE", headers: authHeaders });
+      expect(deleted.status).toBe(200);
+      expect((await app.request(`/api/templates/${id}`, { headers: authHeaders })).status).toBe(404);
+      expect((await app.request(`/api/templates/resolve/${id}`, { headers: authHeaders })).status).toBe(404);
+    } finally {
+      await app.request("/api/templates", { method: "POST", headers: authHeaders, body: JSON.stringify(original) });
+    }
+  });
+
+  it("serves uploaded files from the configured data directory", async () => {
+    const data = new FormData();
+    data.append("file", new File(["uploaded-image-bytes"], "test.png", { type: "image/png" }));
+    const response = await app.request("/api/upload", { method: "POST", headers: { "x-admin-key": adminKey }, body: data });
+    expect(response.status).toBe(200);
+    const uploaded = await response.json();
+    const fetched = await app.request(uploaded.url);
+    expect(fetched.status).toBe(200);
+    expect(await fetched.text()).toBe("uploaded-image-bytes");
+  });
+});
+
+describe("Fixed asset rendering API", () => {
+  it("preserves template styles, validates identifiers, and fails for missing fixed files", async () => {
+    const { getDefaultConfig } = await import("../../core/engine");
+    const id = "fixed_asset_api_test";
+    const template = { ...getDefaultConfig(), id, images: [
+      { id: "bg", src: "/missing-background.png", alt: "", isAbsolute: true, templateAssetKey: "background", zIndex: 0 },
+    ] };
+    try {
+      expect((await app.request("/api/templates", { method: "POST", headers: authHeaders, body: JSON.stringify(template) })).status).toBe(200);
+      const response = await app.request("/api/render", { method: "POST", headers: authHeaders, body: JSON.stringify({
+        template: id, markdown: "正文", preserveTemplateStyle: true,
+        config: { theme: { bgColor: "#123456" }, typography: { bodyFont: "Other Font" } },
+      }) });
+      const rendered = await response.json();
+      expect(rendered.result.config.theme.bgColor).toBe(template.theme.bgColor);
+      expect(rendered.result.config.typography.bodyFont).toBe(template.typography.bodyFont);
+      expect(rendered.result.pages[0].images[0].templateAssetKey).toBe("background");
+      const missing = await app.request("/api/render/export", { method: "POST", headers: authHeaders, body: JSON.stringify({ template: id, markdown: "正文" }) });
+      expect(missing.status).toBe(422);
+      expect((await missing.json()).error).toContain("background");
+      const unknown = await app.request("/api/render", { method: "POST", headers: authHeaders, body: JSON.stringify({ template: id, templateImageOverrides: { unknown: "new.png" } }) });
+      expect(unknown.status).toBe(400);
+      const duplicate = await app.request("/api/templates", { method: "POST", headers: authHeaders, body: JSON.stringify({ ...template, images: [...template.images, { ...template.images[0], id: "bg2" }] }) });
+      expect(duplicate.status).toBe(400);
+    } finally {
+      await app.request(`/api/templates/${id}`, { method: "DELETE", headers: authHeaders });
+    }
+  });
+});

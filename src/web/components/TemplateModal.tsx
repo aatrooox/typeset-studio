@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Check, FolderPlus, Trash2, X, Sparkles, Star } from "lucide-react";
+import { validateTemplateAssets } from "../../core/template";
 import { TemplateSlot, TypesetConfig } from "../../core/types";
 
 interface TemplateModalProps {
@@ -13,6 +14,8 @@ interface TemplateModalProps {
 interface SlotsResponse {
   ok: boolean;
   account: string;
+  message?: string;
+  error?: string;
   slots: {
     article_cover?: { id: string; template?: TypesetConfig };
     newspic_cover?: { id: string; template?: TypesetConfig };
@@ -41,13 +44,14 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
 
   const fetchSlots = async (acc = account) => {
     try {
-      const res = await fetch(`/api/templates/slots?account=${encodeURIComponent(acc)}`);
+      const res = await fetch(`/api/templates/slots?account=${encodeURIComponent(acc)}`, { headers: { "x-admin-key": adminKey } });
       const data: SlotsResponse = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.message || data.error || "获取槽位失败");
       if (data.ok && data.slots) {
         setSlotsData(data.slots);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "模板请求失败");
     }
   };
 
@@ -62,11 +66,12 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
         body: JSON.stringify({ slot, templateId, account }),
       });
       const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.message || data.error || "设置默认模板失败");
       if (data.ok) {
         await fetchSlots(account);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "模板请求失败");
     }
   };
 
@@ -78,7 +83,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
         headers: adminKey ? { "x-admin-key": adminKey } : {},
       });
       const data = await res.json();
-      if (data.ok && Array.isArray(data.templates)) {
+      if (res.ok && data.ok && Array.isArray(data.templates)) {
         setTemplates(data.templates);
       } else {
         setError(data.message || "获取模板失败，请检查密钥");
@@ -97,12 +102,13 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
       setTemplateName(currentConfig.name ? `${currentConfig.name} 副本` : "我的自定义模板");
       setSaveSlot(currentConfig.aspectRatio === "wechat-cover-2.35" ? "article_cover" : "newspic_content");
     }
-  }, [isOpen, account]);
+  }, [isOpen, account, adminKey]);
 
   const handleSave = async () => {
     if (!templateName.trim()) return;
     setIsSaving(true);
     try {
+      validateTemplateAssets(currentConfig.images);
       const tplToSave: TypesetConfig = {
         ...currentConfig,
         id: undefined, // auto generate
@@ -120,14 +126,14 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
       });
 
       const data = await res.json();
-      if (data.ok) {
+      if (res.ok && data.ok) {
         await fetchTemplates();
         await fetchSlots(account);
       } else {
-        setError(data.message || "保存模板失败");
+        setError(data.message || data.error || "保存模板失败");
       }
-    } catch {
-      setError("保存模板请求异常");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "保存模板请求异常");
     } finally {
       setIsSaving(false);
     }
@@ -135,14 +141,16 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/templates/${id}`, {
+      const res = await fetch(`/api/templates/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: adminKey ? { "x-admin-key": adminKey } : {},
       });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.message || data.error || "删除模板失败");
       setTemplates((prev) => prev.filter((t) => t.id !== id));
       await fetchSlots(account);
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "模板请求失败");
     }
   };
 

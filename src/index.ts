@@ -15,7 +15,7 @@ export {
   readFontFamilyName,
   type LocalFontInfo,
 } from "./core/font-loader";
-export { applyTemplateImages } from "./core/template";
+export { applyTemplateImages, validateTemplateAssets } from "./core/template";
 
 export {
   typesetStudioAdapter,
@@ -34,6 +34,9 @@ export type {
   AspectRatioType,
   CanvasSpec,
   ContentBlockKind,
+  CoverFont,
+  CoverImage,
+  PipelineCoverTheme,
   FlowBlock,
   FlowImage,
   FlowLine,

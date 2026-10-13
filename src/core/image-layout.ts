@@ -22,6 +22,10 @@ export function resolveImagePlacement(
   stageWidth: number,
   stageHeight: number,
 ): ResolvedFlowImage {
+  // 固定素材沿用模板坐标，普通配图数量变化不能移动它。
+  if (img.templateAssetKey && img.x != null && img.y != null && img.width != null && img.height != null) {
+    return { ...img, x: img.x, y: img.y, width: img.width, height: img.height };
+  }
   const preset = img.layoutPreset || "auto";
   const padding = 16;
   const captionH = img.captionHeight ?? 36;

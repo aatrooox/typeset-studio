@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { Hono } from "hono";
+import { resolveDataDir } from "../../core/data-dir";
 
-const UPLOAD_DIR = join(process.cwd(), "data", "uploads");
+const UPLOAD_DIR = join(resolveDataDir(), "uploads");
 
 function ensureUploadDir(): void {
   if (!existsSync(UPLOAD_DIR)) {

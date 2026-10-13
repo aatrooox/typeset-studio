@@ -6,6 +6,10 @@ export function normalizeMixedTextSpacing(text: string): string {
 
 export function parseInlineRuns(text: string, highlightWords: string[] = []): InlineTextRun[] {
   const runs: InlineTextRun[] = [];
+  // 空词不能参与正则匹配，否则游标无法前进。
+  const escapedWords = highlightWords.filter((word) => word.length > 0)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const hlRegex = escapedWords.length ? new RegExp(`(${escapedWords.join("|")})`, "g") : null;
   // Tokenize markdown bold **text**, italic *text*, highlight ==text==, or matching highlightWords
   // Simple token regex
   const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*|==[^=]+==)/g;
@@ -14,14 +18,12 @@ export function parseInlineRuns(text: string, highlightWords: string[] = []): In
 
   function pushTextWithHighlights(str: string, baseStyle: Partial<InlineTextRun> = {}) {
     if (!str) return;
-    if (highlightWords.length === 0) {
+    if (!hlRegex) {
       runs.push({ text: str, ...baseStyle });
       return;
     }
 
-    // Match any of highlightWords
-    const escapedWords = highlightWords.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    const hlRegex = new RegExp(`(${escapedWords.join("|")})`, "g");
+    hlRegex.lastIndex = 0;
     let hlLast = 0;
     let hlMatch: RegExpExecArray | null;
 

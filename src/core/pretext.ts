@@ -5,6 +5,10 @@ export {
 } from "@chenglou/pretext/rich-inline";
 export type { RichInlineCursor } from "@chenglou/pretext/rich-inline";
 
+// Node ESM 使用标准加载器，浏览器不会加载原生模块。
+const requireFn = typeof process !== "undefined" && process.versions?.node
+  ? (await import("node:module")).createRequire(import.meta.url)
+  : undefined;
 let initialized = false;
 
 /**
@@ -37,8 +41,6 @@ export function ensurePretextRuntime(): void {
 
   // Node/Bun headless environment
   try {
-    // Dynamic import to prevent bundler errors in browser
-    const requireFn = (import.meta as any).require || (globalThis as any).require;
     if (requireFn) {
       const { createCanvas } = requireFn("@napi-rs/canvas");
 

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
+import { randomBytes } from "node:crypto";
 import type { Context, Next } from "hono";
 
 const ENV_PATH = resolve(process.cwd(), ".env");
@@ -26,7 +27,7 @@ export function getOrGenerateAdminKey(): string {
   }
 
   // Generate a new secure key
-  const randomSuffix = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+  const randomSuffix = randomBytes(24).toString("hex");
   const newKey = `tsk_${randomSuffix}`;
 
   try {
@@ -53,18 +54,6 @@ export async function authMiddleware(c: Context, next: Next) {
 
   const providedKey = headerKey || bearerKey || queryKey;
 
-  // Seamless local use: requests from localhost / loopback are trusted for dev
-  const host = c.req.header("host") || "";
-  const isLocal =
-    host.includes("localhost") ||
-    host.includes("127.0.0.1") ||
-    host.includes("0.0.0.0") ||
-    host.includes("[::1]");
-
-  if (isLocal) {
-    return next();
-  }
-
   if (!providedKey || providedKey !== adminKey) {
     return c.json(
       {
@@ -77,4 +66,20 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 
   return next();
+}
+
+// 仅真实回环连接且来源为本机网页时允许自动取钥。
+export function isLocalRequest(c: Context): boolean {
+  if (c.req.header("forwarded") || c.req.header("x-forwarded-for") || c.req.header("x-forwarded-host")) return false;
+  const peer = c.env?.peerAddress;
+  if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(peer)) return false;
+  const isLoopback = (value: string) => {
+    try {
+      return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(value).hostname);
+    } catch {
+      return false;
+    }
+  };
+  return isLoopback(c.req.url) && isLoopback(`http://${c.req.header("host") || ""}`) &&
+    (!c.req.header("origin") || isLoopback(c.req.header("origin")!));
 }

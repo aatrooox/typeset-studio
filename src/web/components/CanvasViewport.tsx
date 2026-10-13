@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { LayoutGrid, Rows, ZoomIn } from "lucide-react";
 import { drawPageToContext } from "../../core/canvas-draw";
 import { CanvasSpec, FlowPage, TypesetConfig, TypesetResult } from "../../core/types";
@@ -19,6 +19,7 @@ const CanvasCard: React.FC<CanvasCardProps> = ({
   zoom,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [paintError, setPaintError] = useState<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -26,69 +27,82 @@ const CanvasCard: React.FC<CanvasCardProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    canvas.dataset.renderState = "loading";
+    setPaintError(null);
     let cancelled = false;
+    const controller = new AbortController();
 
     const getImage = (src: string) => {
       if (!src) return Promise.resolve(null);
       return new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          if (!cancelled) resolve(img);
+        let fallback: HTMLImageElement | undefined;
+        const finish = (image: HTMLImageElement | null) => {
+          controller.signal.removeEventListener("abort", abort);
+          img.onload = img.onerror = null;
+          if (fallback) fallback.onload = fallback.onerror = null;
+          resolve(image);
         };
+        const abort = () => finish(null);
+        if (controller.signal.aborted) { finish(null); return; }
+        controller.signal.addEventListener("abort", abort, { once: true });
+        img.crossOrigin = "anonymous";
+        img.onload = () => finish(img);
         img.onerror = () => {
-          const img2 = new Image();
-          img2.onload = () => {
-            if (!cancelled) resolve(img2);
-          };
-          img2.onerror = () => {
-            if (!cancelled) resolve(null);
-          };
-          img2.src = src;
+          fallback = new Image();
+          fallback.onload = () => finish(fallback!);
+          fallback.onerror = () => finish(null);
+          fallback.src = src;
         };
         img.src = src;
       });
     };
 
-    const paint = () => {
-      if (cancelled || !canvas) return;
-      drawPageToContext(ctx, {
-        page,
-        spec,
-        config,
-        totalPageCount,
-        getImage,
-        isServer: false,
+    // 每次绘制使用独立缓冲画布，只提交当前代的完整结果。
+    const paint = async () => {
+      const buffer = document.createElement("canvas");
+      buffer.width = spec.width;
+      buffer.height = spec.height;
+      const bufferContext = buffer.getContext("2d");
+      if (!bufferContext) return;
+      await drawPageToContext(bufferContext, {
+        page, spec, config, totalPageCount, getImage, isServer: false,
       });
+      if (!cancelled) {
+        ctx.clearRect(0, 0, spec.width, spec.height);
+        ctx.drawImage(buffer, 0, 0);
+        canvas.dataset.renderState = "ready";
+      }
     };
-
-    paint();
-
-    // Trigger re-render as soon as external web fonts (Google Fonts, Wenkai) finish loading
-    if (typeof document !== "undefined" && (document as any).fonts) {
-      (document as any).fonts.ready.then(() => {
-        paint();
-      });
-    }
+    paint().catch((error) => {
+      if (cancelled) return;
+      canvas.dataset.renderState = "error";
+      ctx.clearRect(0, 0, spec.width, spec.height);
+      setPaintError(error instanceof Error ? error.message : "画布绘制失败");
+    });
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [page, spec, config, totalPageCount]);
 
   return (
-    <canvas
-      id={`typeset-page-${page.pageNumber}`}
-      ref={canvasRef}
-      width={spec.width}
-      height={spec.height}
-      className="typeset-page absolute top-0 left-0 border border-[#e0e0e0] dark:border-[#222222] shadow-sm select-none"
-      style={{
-        width: spec.width * zoom,
-        height: spec.height * zoom,
-        backgroundColor: config.theme.bgColor,
-      }}
-    />
+    <>
+      <canvas
+        id={`typeset-page-${page.pageNumber}`}
+        ref={canvasRef}
+        width={spec.width}
+        height={spec.height}
+        className="typeset-page absolute top-0 left-0 border border-[#e0e0e0] dark:border-[#222222] shadow-sm select-none"
+        style={{
+          width: spec.width * zoom,
+          height: spec.height * zoom,
+          backgroundColor: config.theme.bgColor,
+        }}
+      />
+      {paintError && <div role="alert" className="absolute inset-0 flex items-center justify-center bg-white/90 p-4 text-sm text-red-600">{paintError}</div>}
+    </>
   );
 };
 

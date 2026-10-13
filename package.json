@@ -42,7 +42,7 @@
     "dev:server": "bun --watch src/server/index.ts",
     "dev:all": "bun --watch src/server/index.ts & vite",
     "build": "vite build && bun run build:lib",
-    "build:lib": "bun build src/index.ts src/adapter.ts --outdir dist/lib --target node --external @napi-rs/canvas",
+    "build:lib": "rm -rf dist/lib && bun build src/index.ts src/adapter.ts --outdir dist/lib --target node --splitting --external @napi-rs/canvas",
     "build:watch": "vite build --watch",
     "preview": "vite preview",
     "server": "bun run src/server/index.ts",

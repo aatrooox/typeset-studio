@@ -20,6 +20,7 @@ export interface InlineTextRun {
   italic?: boolean;
   highlight?: boolean;
   font?: string;
+  letterSpacing?: number;
 }
 
 export type ContentBlockKind =
@@ -55,6 +56,8 @@ export interface FlowImage {
   src: string;
   alt: string;
   caption?: string;
+  templateAssetKey?: string; // 固定模板素材的唯一标识
+  repeatEveryPage?: boolean; // 开启时忽略页码，在所有输出页重复
   x?: number;
   y?: number;
   width?: number;
@@ -77,6 +80,7 @@ export interface FlowLineFragment {
   highlight?: boolean;
   gapBefore: number;
   occupiedWidth: number;
+  letterSpacing?: number;
 }
 
 export interface FlowLine {
@@ -163,6 +167,7 @@ export interface TypesetConfig {
   watermarkText: string;
   chrome?: TypesetChromeConfig;
   images?: FlowImage[];
+  coverTheme?: PipelineCoverTheme;
 }
 
 export interface TypesetResult {
@@ -170,4 +175,45 @@ export interface TypesetResult {
   pageCount: number;
   canvasSpec: CanvasSpec;
   config: TypesetConfig;
+}
+
+// 流水线解析后的封面主题，与 pipeline 的公开契约保持一致。
+export interface CoverFont {
+  fontFamily: string;
+  fontSize: number;
+  minFontSize: number;
+  fontWeight: number;
+  lineHeight: number;
+  letterSpacing: number;
+}
+export interface CoverImage {
+  src: string;
+  fit: "cover" | "contain" | "fill";
+  position: { x: number; y: number };
+  opacity: number;
+}
+export interface PipelineCoverTheme {
+  id: string;
+  format: "poster-3-4" | "wechat-cover-split";
+  typography: { title: CoverFont; subtitle: CoverFont; footer: CoverFont };
+  colors: { text: string; accent: string; muted: string };
+  background: {
+    fill: { type: "solid"; color: string } |
+      { type: "linear"; angle: number; stops: Array<{ color: string; offset: number }> } |
+      { type: "radial"; position: { x: number; y: number }; stops: Array<{ color: string; offset: number }> };
+    image: CoverImage | null;
+    overlay: { color: string; opacity: number } | null;
+  };
+  decoration: {
+    pattern: "none" | "lines" | "grid" | "dots" | "rings" | "burst";
+    color: string;
+    opacity: number;
+    size: number;
+    image: CoverImage | null;
+  };
+  layout: {
+    textAlign: "left" | "center" | "right";
+    verticalAlign: "top" | "center" | "bottom";
+    safeArea: AlgorithmParams["safeArea"];
+  };
 }

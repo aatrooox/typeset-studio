@@ -3,6 +3,7 @@ import { parseContentBlocks, parseInlineRuns, splitTextByPages } from "./inline-
 import { paginateBlocks } from "./obstacle-flow";
 import { computeBlockStyles } from "./typography";
 import { resolveImagePlacement } from "./image-layout";
+import { validateTemplateAssets } from "./template";
 import {
   FlowBlock,
   FlowImage,
@@ -76,8 +77,18 @@ export function runTypeset(params: {
   images?: FlowImage[];
   config: TypesetConfig;
   highlightWords?: string[];
+  minPages?: number;
+  maxPages?: number;
+  pageFillRatios?: Record<number, number>;
 }): TypesetResult {
-  const { markdown, images = [], config, highlightWords = [] } = params;
+  const { markdown, images = [], config, highlightWords = [], minPages = 1, maxPages = 0, pageFillRatios } = params;
+  if (!Number.isInteger(minPages) || minPages < 1 || !Number.isInteger(maxPages) || maxPages < 0 || (maxPages > 0 && maxPages < minPages)) {
+    throw new RangeError("Invalid page constraints: maxPages must be 0 or at least minPages");
+  }
+  validateTemplateAssets(images);
+  if (images.some((image) => !image.repeatEveryPage && image.pageIndex != null && (!Number.isInteger(image.pageIndex) || image.pageIndex < 1 || image.pageIndex > 50))) {
+    throw new RangeError("Image pageIndex must be an integer between 1 and 50");
+  }
   const spec = getCanvasSpec(config.aspectRatio);
   const { stageWidth, stageHeight } = computeStageDimensions(
     spec,
@@ -93,70 +104,97 @@ export function runTypeset(params: {
     bodyFont: config.typography.bodyFont,
   });
 
+  if (config.coverTheme) {
+    const fonts = config.coverTheme.typography;
+    for (const [kind, style] of Object.entries(blockStyles)) {
+      const font = kind.includes("heading") ? fonts.title : fonts.subtitle;
+      Object.assign(style, {
+        font: `${font.fontWeight} ${font.fontSize}px "${font.fontFamily}"`,
+        lineHeight: Math.round(font.fontSize * font.lineHeight),
+      });
+    }
+  }
+
   // 自动分页和手动分页共用相同的文字块样式。
   const createFlowBlocks = (text: string): FlowBlock[] => parseContentBlocks(text).map((block) => ({
     ...blockStyles[block.kind],
     kind: block.kind,
     text: block.text,
-    runs: parseInlineRuns(block.text, highlightWords),
+    runs: parseInlineRuns(block.text, highlightWords).map((run) => ({
+      ...run, letterSpacing: config.coverTheme?.typography[block.kind.includes("heading") ? "title" : "subtitle"].letterSpacing,
+    })),
     bullet: block.kind === "list-item" ? block.bullet ?? "•" : undefined,
     textIndent: block.kind === "list-item" ? 28 : block.kind === "quote" ? 20 : 0,
     keepWithNext: ["heading", "subheading", "minor-heading"].includes(block.kind),
   }));
+
+  const templateImages = images.filter((image) => image.templateAssetKey);
+  const contentImages = images.filter((image) => !image.templateAssetKey);
 
   // Check if explicit page markers exist
   const pageSegments = splitTextByPages(markdown);
   let pages: FlowPage[] = [];
 
   if (pageSegments.length > 1) {
-    // Multi-page explicit segmentation
-    pages = pageSegments.map((segmentText, index) => {
-      const pageNum = index + 1;
-      const flowBlocks = createFlowBlocks(segmentText);
-
-      // Match images explicitly configured for this page (img.pageIndex === pageNum).
-      // If an image has no pageIndex, fallback to Page 1 (index === 0).
-      const pageImages = images.filter((img) => {
-        if (img.pageIndex !== undefined && img.pageIndex !== null && img.pageIndex > 0) {
-          return img.pageIndex === pageNum;
-        }
-        return index === 0;
-      });
-
-      const subPages = paginateBlocks(flowBlocks, stageWidth, stageHeight, pageImages, {
+    // 手动段落溢出继续分页，图片仍归属原始段落，最终页码连续。
+    const segmentCount = Math.max(pageSegments.length, ...contentImages.map((image) => image.pageIndex || 1));
+    if (segmentCount > 50) throw new RangeError("Content exceeds engine limit of 50 pages");
+    for (let index = 0; index < segmentCount; index++) {
+      const pageImages = contentImages.filter((image) => (image.pageIndex || 1) === index + 1);
+      const subPages = paginateBlocks(createFlowBlocks(pageSegments[index] || ""), stageWidth, stageHeight, pageImages, {
         obstacleGap: config.algorithm.obstacleGap,
         pageImageLimit: 2,
         textAlign: config.algorithm.textAlign,
         verticalAlign: config.algorithm.verticalAlign,
-        initialPageNumber: pageNum,
+        initialPageNumber: pages.length + 1,
+        templateImages,
+        targetFillRatio: pageFillRatios?.[index + 1] ?? config.algorithm.targetFillRatio,
       });
-
-      const firstSubPage = subPages[0] ?? {
-        pageNumber: pageNum,
-        lines: [],
-        images: pageImages.map((img, idx) =>
-          resolveImagePlacement(img, idx, stageWidth, stageHeight),
-        ),
-        textBottom: 0,
-        fillRatio: 0,
-      };
-
-      return {
-        ...firstSubPage,
-        pageNumber: pageNum,
-      };
-    });
+      pages.push(...(subPages.length ? subPages : [{
+        pageNumber: pages.length + 1, lines: [], images: [], textBottom: 0, fillRatio: 0,
+      }]));
+    }
+    const lastTemplatePage = Math.max(0, ...templateImages.filter((image) => !image.repeatEveryPage).map((image) => image.pageIndex || 1));
+    if (pages.length < lastTemplatePage) {
+      pages.push(...paginateBlocks([], stageWidth, stageHeight, [], {
+        initialPageNumber: pages.length + 1, lastPageNumber: lastTemplatePage, templateImages,
+      }));
+    }
   } else {
     // Single page or auto-flowing pagination
     const flowBlocks = createFlowBlocks(markdown);
 
-    pages = paginateBlocks(flowBlocks, stageWidth, stageHeight, images, {
+    pages = paginateBlocks(flowBlocks, stageWidth, stageHeight, contentImages, {
       obstacleGap: config.algorithm.obstacleGap,
       pageImageLimit: config.aspectRatio === "longform-3-4" ? 2 : 1,
       textAlign: config.algorithm.textAlign,
       verticalAlign: config.algorithm.verticalAlign,
+      targetFillRatio: config.algorithm.targetFillRatio,
+      pageFillRatios,
+      templateImages,
     });
   }
+
+  // 少页约束通过缩短每页文字区分配正文，无法分配时明确报错。
+  if (pageSegments.length === 1 && pages.length < minPages && markdown.trim()) {
+    for (let attempt = 1; attempt <= 8 && pages.length < minPages; attempt++) {
+      const ratio = config.algorithm.targetFillRatio * Math.pow(0.75, attempt);
+      try {
+        pages = paginateBlocks(createFlowBlocks(markdown), stageWidth, stageHeight, contentImages, {
+          obstacleGap: config.algorithm.obstacleGap,
+          pageImageLimit: config.aspectRatio === "longform-3-4" ? 2 : 1,
+          textAlign: config.algorithm.textAlign,
+          verticalAlign: config.algorithm.verticalAlign,
+          targetFillRatio: ratio,
+          templateImages,
+          pageFillRatios: pageFillRatios && Object.fromEntries(Object.entries(pageFillRatios).map(([page, fill]) => [page, Math.min(fill, ratio)])),
+        });
+      } catch { break; }
+    }
+  }
+  if (pages.length < minPages && minPages > 1) throw new RangeError(`Content cannot satisfy minPages=${minPages}; lower the minimum page count`);
+  if (pages.length > 50) throw new RangeError("Content exceeds engine limit of 50 pages");
+  if (maxPages > 0 && pages.length > maxPages) throw new RangeError(`Content exceeds maxPages=${maxPages}; no content was discarded`);
 
   // Ensure at least 1 page exists
   if (pages.length === 0) {
@@ -164,7 +202,7 @@ export function runTypeset(params: {
       {
         pageNumber: 1,
         lines: [],
-        images: images.map((img, idx) =>
+        images: images.filter((image) => !image.templateAssetKey || image.repeatEveryPage || (image.pageIndex || 1) === 1).map((img, idx) =>
           resolveImagePlacement(img, idx, stageWidth, stageHeight),
         ),
         textBottom: 0,

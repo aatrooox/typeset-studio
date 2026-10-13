@@ -92,6 +92,83 @@ export async function drawPageToContext(
   ctx.fillRect(0, 0, spec.width, spec.height);
   ctx.restore();
 
+  // 主题背景、纹理和装饰图使用整张画布坐标。
+  const coverTheme = config.coverTheme;
+  const drawCoverImage = async (image: NonNullable<typeof coverTheme>["background"]["image"]) => {
+    if (!image) return;
+    const loaded = await getImage(image.src);
+    if (!loaded) throw new Error("Failed to load cover theme image");
+    const scale = image.fit === "contain" ? Math.min(spec.width / loaded.width, spec.height / loaded.height)
+      : Math.max(spec.width / loaded.width, spec.height / loaded.height);
+    const width = image.fit === "fill" ? spec.width : loaded.width * scale;
+    const height = image.fit === "fill" ? spec.height : loaded.height * scale;
+    ctx.save();
+    ctx.globalAlpha = image.opacity;
+    ctx.drawImage(loaded, (spec.width - width) * image.position.x / 100,
+      (spec.height - height) * image.position.y / 100, width, height);
+    ctx.restore();
+  };
+  if (coverTheme) {
+    const fill = coverTheme.background.fill;
+    ctx.save();
+    if (fill.type === "solid") ctx.fillStyle = fill.color;
+    else {
+      let gradient;
+      if (fill.type === "linear") {
+        const angle = fill.angle * Math.PI / 180;
+        const dx = Math.cos(angle) * spec.width / 2;
+        const dy = Math.sin(angle) * spec.height / 2;
+        gradient = ctx.createLinearGradient(spec.width / 2 - dx, spec.height / 2 - dy, spec.width / 2 + dx, spec.height / 2 + dy);
+      } else {
+        const x = spec.width * fill.position.x / 100;
+        const y = spec.height * fill.position.y / 100;
+        gradient = ctx.createRadialGradient(x, y, 0, x, y, Math.hypot(spec.width, spec.height));
+      }
+      for (const stop of fill.stops) gradient.addColorStop(stop.offset / 100, stop.color);
+      ctx.fillStyle = gradient;
+    }
+    ctx.fillRect(0, 0, spec.width, spec.height);
+    ctx.restore();
+    await drawCoverImage(coverTheme.background.image);
+    if (coverTheme.background.overlay) {
+      ctx.save();
+      ctx.fillStyle = coverTheme.background.overlay.color;
+      ctx.globalAlpha = coverTheme.background.overlay.opacity;
+      ctx.fillRect(0, 0, spec.width, spec.height);
+      ctx.restore();
+    }
+    const decoration = coverTheme.decoration;
+    ctx.save();
+    ctx.strokeStyle = ctx.fillStyle = decoration.color;
+    ctx.globalAlpha = decoration.opacity;
+    const size = Math.max(8, decoration.size);
+    ctx.beginPath();
+    if (["lines", "grid", "dots"].includes(decoration.pattern)) {
+      for (let x = 0; x < spec.width; x += size) {
+        if (decoration.pattern === "grid") { ctx.moveTo(x, 0); ctx.lineTo(x, spec.height); }
+        if (decoration.pattern === "dots") {
+          for (let y = 0; y < spec.height; y += size) { ctx.moveTo(x + 2, y); ctx.arc(x, y, 2, 0, Math.PI * 2); }
+        }
+      }
+      if (decoration.pattern !== "dots") {
+        for (let y = 0; y < spec.height; y += size) { ctx.moveTo(0, y); ctx.lineTo(spec.width, y); }
+      }
+    } else if (decoration.pattern === "rings") {
+      for (let radius = size; radius < Math.hypot(spec.width, spec.height); radius += size) {
+        ctx.moveTo(spec.width / 2 + radius, spec.height / 2);
+        ctx.arc(spec.width / 2, spec.height / 2, radius, 0, Math.PI * 2);
+      }
+    } else if (decoration.pattern === "burst") {
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / Math.max(8, Math.round(size / 3))) {
+        ctx.moveTo(spec.width / 2, spec.height / 2);
+        ctx.lineTo(spec.width / 2 + Math.cos(angle) * spec.width, spec.height / 2 + Math.sin(angle) * spec.height);
+      }
+    }
+    if (decoration.pattern === "dots") ctx.fill(); else ctx.stroke();
+    ctx.restore();
+    await drawCoverImage(decoration.image);
+  }
+
   // 2. Compute Stage Layout Dimensions
   const { stageX, stageY } = computeStageDimensions(
     spec,
@@ -154,48 +231,58 @@ export async function drawPageToContext(
     return za - zb;
   });
 
-  for (const img of sortedImages) {
-    const loadedImg = await getImage(img.src);
-    const imgX = stageX + img.x;
-    const imgY = stageY + img.y;
-    const centerX = imgX + img.width / 2;
-    const centerY = imgY + img.height / 2;
+  const drawImages = async (images: typeof sortedImages) => {
+    for (const img of images) {
+      let loadedImg;
+      try {
+        loadedImg = await getImage(img.src);
+      } catch (error) {
+        if (img.templateAssetKey) throw new Error(`模板素材 ${img.templateAssetKey} 加载失败：${error instanceof Error ? error.message : String(error)}`);
+        throw error;
+      }
+      if (!loadedImg && img.templateAssetKey) throw new Error(`模板素材 ${img.templateAssetKey} 加载失败：图片不存在或无法读取`);
+      const imgX = stageX + img.x;
+      const imgY = stageY + img.y;
+      const centerX = imgX + img.width / 2;
+      const centerY = imgY + img.height / 2;
 
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    if (img.rotate) {
-      ctx.rotate((img.rotate * Math.PI) / 180);
-    }
-    ctx.globalAlpha = img.opacity ?? 1;
-
-    const w = img.width;
-    const h = img.height;
-    const radius = Math.min(img.borderRadius ?? 12, w / 2, h / 2);
-
-    ctx.beginPath();
-    ctx.roundRect(-w / 2, -h / 2, w, h, radius);
-    ctx.clip();
-
-    if (loadedImg) {
-      ctx.drawImage(loadedImg, -w / 2, -h / 2, w, h);
-    } else {
-      ctx.fillStyle = theme.cardBg || "#222222";
-      ctx.fillRect(-w / 2, -h / 2, w, h);
-    }
-    ctx.restore();
-
-    // Image Caption (e.g., "图 1：建筑结构中的空间秩序感")
-    if (img.caption?.trim()) {
       ctx.save();
-      const capFontSize = Math.max(14, Math.round(algorithm.baseFontSize * 0.45));
-      ctx.font = resolveCanvasFont(`400 ${capFontSize}px PingFang SC`, isServer);
-      ctx.fillStyle = theme.captionColor;
-      ctx.textBaseline = "top";
-      ctx.textAlign = "center";
-      ctx.fillText(img.caption, centerX, imgY + h + 12);
+      ctx.translate(centerX, centerY);
+      if (img.rotate) {
+        ctx.rotate((img.rotate * Math.PI) / 180);
+      }
+      ctx.globalAlpha = img.opacity ?? 1;
+
+      const w = img.width;
+      const h = img.height;
+      const radius = Math.min(img.borderRadius ?? 12, w / 2, h / 2);
+
+      ctx.beginPath();
+      ctx.roundRect(-w / 2, -h / 2, w, h, radius);
+      ctx.clip();
+
+      if (loadedImg) {
+        ctx.drawImage(loadedImg, -w / 2, -h / 2, w, h);
+      } else {
+        ctx.fillStyle = theme.cardBg || "#222222";
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+      }
       ctx.restore();
+
+      // Image Caption (e.g., "图 1：建筑结构中的空间秩序感")
+      if (img.caption?.trim()) {
+        ctx.save();
+        const capFontSize = Math.max(14, Math.round(algorithm.baseFontSize * 0.45));
+        ctx.font = resolveCanvasFont(`400 ${capFontSize}px PingFang SC`, isServer);
+        ctx.fillStyle = theme.captionColor;
+        ctx.textBaseline = "top";
+        ctx.textAlign = "center";
+        ctx.fillText(img.caption, centerX, imgY + h + 12);
+        ctx.restore();
+      }
     }
-  }
+  };
+  await drawImages(sortedImages.filter((image) => (image.zIndex ?? (image.isAbsolute ? 20 : 5)) < 10));
 
   // 5. Text Flow Lines & Fragments
   for (const line of page.lines) {
@@ -258,14 +345,19 @@ export async function drawPageToContext(
         ctx.fillStyle = theme.textColor;
       }
 
+      ctx.letterSpacing = `${fragment.letterSpacing || 0}px`;
       ctx.fillText(fragment.text, cursorX, lineY);
 
       // Measure fragment advance precisely with ctx.measureText
       // to ensure zero text overlap regardless of font metrics
-      const measuredWidth = ctx.measureText(fragment.text).width;
+      const measuredWidth = fragment.letterSpacing ? fragment.occupiedWidth : ctx.measureText(fragment.text).width;
       cursorX += measuredWidth + (fragment.gapBefore || 0);
     }
   }
+
+  await drawImages(sortedImages.filter((image) => (image.zIndex ?? (image.isAbsolute ? 20 : 5)) >= 10));
+
+  ctx.letterSpacing = "0px";
 
   // 6. Footer Section
   const showFooter = chrome?.showFooter ?? !isCover;
@@ -286,9 +378,20 @@ export async function drawPageToContext(
       ctx.restore();
     }
 
+    if (chrome?.showFillRatio) {
+      ctx.save();
+      ctx.font = resolveCanvasFont("500 13px PingFang SC", isServer);
+      ctx.fillStyle = theme.captionColor;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "right";
+      ctx.fillText(`填充率 ${Math.round(page.fillRatio * 100)}%`, spec.width - algorithm.safeArea.right, footerY);
+      ctx.restore();
+    }
     if (showFooterText) {
       ctx.save();
-      ctx.font = resolveCanvasFont('500 13px PingFang SC', isServer);
+      const font = coverTheme?.typography.footer;
+      ctx.font = resolveCanvasFont(font ? `${font.fontWeight} ${font.fontSize}px "${font.fontFamily}"` : '500 13px PingFang SC', isServer);
+      ctx.letterSpacing = `${font?.letterSpacing || 0}px`;
       ctx.fillStyle = theme.watermarkColor || theme.captionColor;
       ctx.globalAlpha = 0.6;
       ctx.textBaseline = "middle";

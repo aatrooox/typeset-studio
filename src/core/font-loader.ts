@@ -1,3 +1,5 @@
+import { clearCache } from "@chenglou/pretext";
+import { createRequire } from "node:module";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 
@@ -56,7 +58,8 @@ export function readFontFamilyName(filePath: string): string | null {
       if (nameId === 1 || nameId === 16) {
         let str = "";
         if (platformId === 0 || platformId === 3) {
-          str = buf.toString("utf16be", strOffset, strOffset + length).trim();
+          if (length % 2 !== 0) continue;
+          str = Buffer.from(buf.subarray(strOffset, strOffset + length)).swap16().toString("utf16le").trim();
         } else {
           str = buf.toString("utf8", strOffset, strOffset + length).trim();
         }
@@ -180,7 +183,7 @@ export function registerServerFonts(options?: { refresh?: boolean }): LocalFontI
   }
 
   try {
-    const { GlobalFonts } = require("@napi-rs/canvas");
+    const { GlobalFonts } = createRequire(import.meta.url)("@napi-rs/canvas");
     if (GlobalFonts && typeof GlobalFonts.registerFromPath === "function") {
       for (const font of fonts) {
         try {
@@ -194,6 +197,7 @@ export function registerServerFonts(options?: { refresh?: boolean }): LocalFontI
         }
       }
       registeredServerFonts = true;
+      clearCache();
     }
   } catch {
     // Client-side or @napi-rs/canvas not available

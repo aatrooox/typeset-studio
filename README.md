@@ -10,7 +10,7 @@
   <a href="#-运行环境与依赖要求"><img src="https://img.shields.io/badge/Runtime-Bun%20%E2%89%A5%201.2-000000.svg?style=flat-square&logo=bun" alt="Bun Runtime"></a>
   <a href="#-运行环境与依赖要求"><img src="https://img.shields.io/badge/Language-TypeScript%205.8-3178C6.svg?style=flat-square&logo=typescript" alt="TypeScript"></a>
   <a href="#-技术栈"><img src="https://img.shields.io/badge/UI-React%2019%20%2B%20Tailwind-61DAFB.svg?style=flat-square&logo=react" alt="React 19"></a>
-  <a href="#-开发与测试"><img src="https://img.shields.io/badge/Tests-26%20Passing%20(100%25)-brightgreen.svg?style=flat-square" alt="Tests Passing"></a>
+  <a href="#-开发与测试"><img src="https://img.shields.io/badge/Tests-Bun-brightgreen.svg?style=flat-square" alt="Tests Passing"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT License"></a>
 </p>
 
@@ -103,13 +103,12 @@ bun install
 bun run server
 ```
 
-服务启动后，控制台将输出服务端口与管理员密钥：
+服务启动后输出端口信息，管理员密钥保存在环境变量或 `.env` 中：
 ```text
 ┌────────────────────────────────────────────────────────┐
 │               ⚡ Typeset Studio Server                 │
 ├────────────────────────────────────────────────────────┤
 │  Web URL:    http://localhost:4890                   │
-│  Admin Key:  tsk_xxxxxxxxxxxxxxxx                      │
 │  Protected:  X-Admin-Key header required               │
 └────────────────────────────────────────────────────────┘
 ```
@@ -130,103 +129,29 @@ bun run dev:all
 
 Typeset Studio 专为现代发布管线（如 `zzhub-pipeline`）设计，可直接作为 `imageRenderer` 插件无缝替换原有的 Chrome 截屏机制。
 
-### 1. 适配器实现示例 (`pipeline-adapter.ts`)
+### 1. 使用内置适配器
 
-在您的流水线项目（或 `typeset-studio/src/`）中定义适配器：
+在流水线项目安装 npm 包：
 
-```typescript
-import { join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
-import type {
-  ImageRenderPlugin,
-  ImageRenderInput,
-  ImageRenderOutput,
-} from "zzhub-pipeline/src/adapter-types";
-
-const STUDIO_URL = process.env.TYPESET_STUDIO_URL || "http://localhost:4890";
-
-export const typesetStudioAdapter: ImageRenderPlugin = {
-  name: "typeset-studio",
-  version: "0.2.2",
-
-  doctor: async () => {
-    try {
-      const res = await fetch(`${STUDIO_URL}/api/health`);
-      return [{ name: "typeset-studio", ok: res.ok, message: "Typeset Studio 在线" }];
-    } catch {
-      return [{ name: "typeset-studio", ok: false, message: "无法连接 Typeset Studio (4890)" }];
-    }
-  },
-
-  render: async (input: ImageRenderInput): Promise<ImageRenderOutput> => {
-    const { route, bodyText, title, outputDir, state, bodyImages } = input;
-    await mkdir(outputDir, { recursive: true });
-    const account = state.route.account || "default";
-
-    // 微信图文封面 (2.35:1)
-    if (route === "wechat-article") {
-      const resp = await fetch(`${STUDIO_URL}/api/render`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slot: "article_cover",
-          account,
-          title,
-          markdown: `# ${title}`,
-        }),
-      }).then((r) => r.json());
-
-      const coverPath = join(outputDir, "cover.png");
-      // 写入图片资源...
-      return {
-        assets: [{ kind: "cover", route, path: coverPath }],
-        pageCount: 1,
-        pages: [{ page: 1, imageCount: 0, imageSources: [] }],
-      };
-    }
-
-    // 贴图长图文 (3:4 多页)
-    if (route === "wechat-newspic") {
-      const resp = await fetch(`${STUDIO_URL}/api/render`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slot: "newspic_content",
-          account,
-          title,
-          markdown: bodyText,
-          images: bodyImages?.map((img, i) => ({ id: `img_${i}`, src: img.path, alt: img.marker })),
-        }),
-      }).then((r) => r.json());
-
-      // 写入各个 page-01.png, page-02.png...
-      return {
-        assets: [...],
-        pageCount: resp.result.pageCount,
-        pages: resp.result.pages.map(p => ({ page: p.pageNumber, imageCount: p.images.length, imageSources: [] })),
-      };
-    }
-
-    throw new Error(`Unsupported route: ${route}`);
-  },
-};
-
-export default typesetStudioAdapter;
+```bash
+npm install @akairos/typeset-studio
 ```
 
-### 2. 在 Pipeline 中配置启用
-
-在 `zzhub-pipeline` 的 `config.json` 中配置指定适配器路径：
+在 `zzhub-pipeline` 的 `config.json` 中启用内置适配器：
 
 ```json
 {
   "plugins": {
-    "imageRenderer": "/path/to/typeset-studio/src/pipeline-adapter.ts"
+    "imageRenderer": "@akairos/typeset-studio/adapter"
   }
 }
 ```
 
-配置后，执行 `zzp render --state ...` 或 `zzp run` 将自动切换为 Typeset Studio 驱动！
+源码联调也可将 `imageRenderer` 指向本项目的 `src/adapter.ts` 或构建后的 `dist/lib/adapter.js`。
+
+默认使用本地原生 Canvas。需要独立渲染服务时，在流水线进程设置 `TYPESET_STUDIO_URL` 和 `TYPESET_ADMIN_KEY`，适配器会传输本地图片并保存返回的 PNG。
+
+配置后执行 `zzp render --state ...` 或 `zzp run` 即可使用该插件。
 
 ---
 
@@ -259,10 +184,11 @@ curl -X POST http://localhost:4890/api/render \
 ```bash
 curl -X POST http://localhost:4890/api/render/png \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Key: <ADMIN_KEY>" \
   -d '{
     "markdown": "# 纯算法排版实战\n无需设计师介入，自动排版对齐",
-    "ratio": "2.35:1",
-    "themeName": "editorial-warm"
+    "slot": "article_cover",
+    "templateKey": "tpl_wechat_cover_editorial"
   }' \
   --output cover.png
 ```
@@ -272,9 +198,11 @@ curl -X POST http://localhost:4890/api/render/png \
 ```bash
 curl -X POST http://localhost:4890/api/render/export \
   -H "Content-Type: application/json" \
+  -H "X-Admin-Key: <ADMIN_KEY>" \
   -d '{
     "markdown": "# 页面一\n这是第一页\n\n---\n\n# 页面二\n这是第二页",
-    "ratio": "3:4"
+    "slot": "newspic_content",
+    "config": { "aspectRatio": "longform-3-4" }
   }'
 # 返回 {"ok": true, "pageCount": 2, "pages": [{ "pageNumber": 1, "dataUrl": "..." }, ...]}
 ```
@@ -363,3 +291,72 @@ bun run build
 ## 📄 开源协议
 
 本项目基于 [MIT 协议](./LICENSE) 开源。
+
+### 鉴权与 pipeline 参数
+
+业务 API（模板、上传、排版）均要求 `X-Admin-Key`。本机编辑器通过真实回环连接自动领取密钥；远程编辑器需在设置中填写密钥。密钥来自 `TYPESET_ADMIN_KEY` 或服务目录的 `.env`，跨域网页不能自动领取。反向代理应使用业务域名，并保留原始 Host。
+
+远程插件设置 `TYPESET_STUDIO_URL` 与 `TYPESET_ADMIN_KEY`。插件会传输本地图片字节；`/uploads/` 路径表示远程服务的上传文件。`TYPESET_DATA_DIR` 统一控制模板、默认配置和上传文件目录。
+
+插件的模板选择顺序为：`studioTemplates.cover/content` → 旧调用中的具体 `template` 名称 → 当前账号的用途槽位默认模板。`wechat-cover-split`、`poster-3-4`、`longform-3-4` 只表示 pipeline 渲染模式，不作为 Studio 模板名查询。未知模板会报错。
+
+插件以有效的 Studio 模板样式为准，pipeline 的 `theme`、`coverTheme`、账号配色、字体、署名和图标不会覆盖已选模板。直接调用渲染 API 时，默认仍允许显式 `config` 覆盖；传 `preserveTemplateStyle: true` 可保留模板样式。页数和逐页填充率约束仍然生效。
+
+`minPages`/`maxPages`（0 表示不设置业务上限）和 `pageSpecs.targetFillRatio` 参与正文分页。填充率决定文字可用高度，少页约束尝试将正文分配到更多页面；无法满足时明确报错，不截断文字。引擎最多生成 50 页以避免失控。手动分页段落溢出时继续分页，段落图片保留在该段首页，最终页码连续。`onProgress` 在排版开始、封面和正文生成后报告阶段及实际页数。
+
+服务默认绑定 `127.0.0.1`；需要局域网或远程访问时设置 `TYPESET_HOST=0.0.0.0`。反向代理请求不能自动取钥。
+
+### 固定模板素材
+
+在编辑器上传图片后，在图片卡片开启“固定模板素材”，填写同一模板内唯一的标识（如 `background`、`logo`，仅字母、数字、下划线和短横线）。自由图层模式下，勾选“设为整页背景”可将图片放到文字下方并铺满当前画布；取消勾选恢复勾选前的布局。点击“重置布局”恢复本次上传或应用模板时的尺寸、位置和图层设置，图片来源、说明和素材标识不变。保存模板后，新内容会沿用这些设置；文字按实际内容重新换行、分页。
+
+固定素材默认按最终输出页码放置，未指定页码视为第 1 页。“每页重复”仅允许自由图层开启，切回 Flow 模式自动关闭；接口同样拒绝 Flow 素材重复。开启后会出现在该模板的全部输出页，包括自动溢出的续页。重复素材不独立制造页面，也不占普通配图数量。封面和正文分别使用各自的模板，正文模板的第 1 页从正文开始计算。
+
+普通输入图片只匹配模板的普通图片位置；固定素材默认保留模板中的来源。重新应用或切换模板会替换之前的固定素材。未标记的旧模板图片保留原替换规则，无需迁移。
+
+渲染 API 可按标识替换当前请求的素材，布局仍使用模板设置，不回写模板文件：
+
+```json
+{
+  "template": "tpl_my_cover",
+  "markdown": "# 新标题",
+  "preserveTemplateStyle": true,
+  "templateImageOverrides": {
+    "background": "/absolute/path/new-background.png"
+  }
+}
+```
+
+Pipeline 插件输入新增以下可选字段：
+
+```ts
+studioTemplates: { cover: "tpl_my_cover", content: "tpl_my_content" },
+templateImageOverrides: {
+  cover: { background: "/absolute/path/new-background.png" },
+  content: { logo: "https://example.com/logo.png" },
+},
+```
+
+对应的 pipeline 命令（需使用支持这些参数的 pipeline 源码或本地安装）：
+
+```bash
+zzp render --state /absolute/path/workflow-state.json \
+  --studio-cover-template tpl_my_cover \
+  --studio-content-template tpl_my_content \
+  --template-images-file /absolute/path/template-images.json
+```
+
+`template-images.json` 内容：
+
+```json
+{
+  "cover": { "background": "./new-background.png" },
+  "content": { "logo": "https://example.com/logo.png" }
+}
+```
+
+选择和映射保存在任务的 `intent.studio_render`，重跑继续使用。模板参数传 `""` 清除任务选择、恢复槽位默认；映射文件整体替换任务原映射，传 `{}` 清除全部替换。相对路径按映射文件所在目录解析。固定素材独立于 `bodyImages`，不进入正文配图等待、标记过滤或“每页必须有正文配图”的计数。
+
+模板只保存文件或 URL 引用，不嵌入、不自动打包迁移。`/uploads/...` 由实际渲染方的 `TYPESET_DATA_DIR` 解析，本地插件和编辑器应使用同一目录；远程模式使用服务端目录。模板中的绝对路径必须在渲染机器存在，HTTP URL 必须可访问。远程调用会传输任务替换中本地文件的字节，但不会复制原模板素材。缺失固定素材、未知替换标识或重复标识会明确报错，终止出图。
+
+本功能尚未随 npm 发布。本地联调时，将 pipeline 的 `plugins.imageRenderer` 指向本仓库 `src/adapter.ts` 或构建后的 `dist/lib/adapter.js`，避免继续加载已安装的旧版本。

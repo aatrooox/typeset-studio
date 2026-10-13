@@ -1,23 +1,12 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { Hono } from "hono";
 import { getDefaultConfig } from "../../core/engine";
 import { TemplateSlot, TypesetConfig } from "../../core/types";
+import { resolveDataDir } from "../../core/data-dir";
+import { validateTemplateAssets } from "../../core/template";
 
-export function resolveDataDir(): string {
-  if (process.env.TYPESET_DATA_DIR) {
-    return process.env.TYPESET_DATA_DIR;
-  }
-  const currentDir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
-  const candidateLib = resolve(currentDir, "../../data");
-  if (existsSync(candidateLib)) return candidateLib;
-  const candidateSrc = resolve(currentDir, "../../../data");
-  if (existsSync(candidateSrc)) return candidateSrc;
-  const candidateCwd = resolve(process.cwd(), "data");
-  if (existsSync(candidateCwd)) return candidateCwd;
-  return candidateLib;
-}
+export { resolveDataDir } from "../../core/data-dir";
 
 const TEMPLATES_DIR = join(resolveDataDir(), "templates");
 
@@ -29,7 +18,11 @@ function ensureTemplatesDir(): void {
       // Ignore write errors in read-only environments
     }
   }
-  seedDefaultTemplates();
+  const seedMarker = join(TEMPLATES_DIR, ".initialized");
+  if (!existsSync(seedMarker)) {
+    seedDefaultTemplates();
+    try { writeFileSync(seedMarker, "1"); } catch { /* 只读安装目录保留读取能力。 */ }
+  }
 }
 
 export const BUILTIN_PRESETS: TypesetConfig[] = [
@@ -383,7 +376,7 @@ export function getSlotDefaultTemplateId(slot: TemplateSlot, account = "default"
 }
 
 export function setSlotDefaultTemplateId(slot: TemplateSlot, templateId: string, account = "default"): void {
-  const dir = join(process.cwd(), "data");
+  const dir = dirname(DEFAULT_SETTINGS_PATH);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -420,7 +413,7 @@ export function getDefaultTemplateId(): string | null {
 }
 
 export function setDefaultTemplateId(id: string): void {
-  const dir = join(process.cwd(), "data");
+  const dir = dirname(DEFAULT_SETTINGS_PATH);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -439,21 +432,13 @@ export function setDefaultTemplateId(id: string): void {
 export function findTemplateByKeyOrName(key: string): TypesetConfig | null {
   const lowerKey = key.trim().toLowerCase();
 
-  // 1. Direct match in built-in memory presets
-  const builtin = BUILTIN_PRESETS.find(
-    (p) => p.id?.toLowerCase() === lowerKey || p.name.toLowerCase() === lowerKey,
-  );
-  if (builtin) return builtin;
+  if (!lowerKey) return null;
+  ensureTemplatesDir();
+  if (!existsSync(TEMPLATES_DIR)) return BUILTIN_PRESETS.find((p) =>
+    p.id?.toLowerCase() === lowerKey || p.name.toLowerCase() === lowerKey) ?? null;
 
-  // 2. Partial match in built-in memory presets
-  const builtinPartial = BUILTIN_PRESETS.find((p) => p.name.toLowerCase().includes(lowerKey));
-  if (builtinPartial) return builtinPartial;
-
-  // 3. Scan disk if templates directory exists
-  if (!existsSync(TEMPLATES_DIR)) return null;
-
-  const directPath = join(TEMPLATES_DIR, `${key}.json`);
-  if (existsSync(directPath)) {
+  const directPath = templatePath(key);
+  if (directPath && existsSync(directPath)) {
     try {
       return JSON.parse(readFileSync(directPath, "utf-8"));
     } catch {
@@ -480,6 +465,11 @@ export function findTemplateByKeyOrName(key: string): TypesetConfig | null {
 
   // 精确匹配优先，名称模糊匹配复用已读取的模板。
   return templates.find((tpl) => tpl.name.toLowerCase().includes(lowerKey)) ?? null;
+}
+
+// 模板标识只用作文件名，名称查询继续支持中文和模糊匹配。
+function templatePath(id: string): string | null {
+  return /^[a-zA-Z0-9_-]+$/.test(id) ? join(TEMPLATES_DIR, `${id}.json`) : null;
 }
 
 export const templatesRouter = new Hono();
@@ -599,7 +589,8 @@ templatesRouter.get("/resolve/:key", (c) => {
 templatesRouter.get("/:id", (c) => {
   ensureTemplatesDir();
   const id = c.req.param("id");
-  const filePath = join(TEMPLATES_DIR, `${id}.json`);
+  const filePath = templatePath(id);
+  if (!filePath) return c.json({ ok: false, error: "Invalid template id" }, 400);
 
   if (!existsSync(filePath)) {
     return c.json({ ok: false, error: "Template not found" }, 404);
@@ -618,13 +609,20 @@ templatesRouter.post("/", async (c) => {
     return c.json({ ok: false, error: "Template name is required" }, 400);
   }
 
+  try {
+    validateTemplateAssets(body.images);
+  } catch (error) {
+    return c.json({ ok: false, error: error instanceof Error ? error.message : "无效的模板素材" }, 400);
+  }
+
   const id = body.id || `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const templateToSave: TypesetConfig = {
     ...body,
     id,
   };
 
-  const filePath = join(TEMPLATES_DIR, `${id}.json`);
+  const filePath = templatePath(id);
+  if (!filePath) return c.json({ ok: false, error: "Invalid template id" }, 400);
   writeFileSync(filePath, JSON.stringify(templateToSave, null, 2), "utf-8");
 
   return c.json({ ok: true, template: templateToSave });
@@ -634,7 +632,8 @@ templatesRouter.post("/", async (c) => {
 templatesRouter.delete("/:id", (c) => {
   ensureTemplatesDir();
   const id = c.req.param("id");
-  const filePath = join(TEMPLATES_DIR, `${id}.json`);
+  const filePath = templatePath(id);
+  if (!filePath) return c.json({ ok: false, error: "Invalid template id" }, 400);
 
   if (existsSync(filePath)) {
     unlinkSync(filePath);

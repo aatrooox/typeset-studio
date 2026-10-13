@@ -1,17 +1,16 @@
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
-import { authMiddleware, getOrGenerateAdminKey } from "./auth";
+import { authMiddleware, getOrGenerateAdminKey, isLocalRequest } from "./auth";
 import { renderRouter } from "./routes/render";
 import { templatesRouter } from "./routes/templates";
 import { uploadRouter } from "./routes/upload";
 import { fontsRouter } from "./routes/fonts";
+import { resolveDataDir } from "../core/data-dir";
 
 export const app = new Hono();
 
-app.use("*", cors());
 
 // Health check (public)
 app.get("/api/health", (c) => {
@@ -36,17 +35,12 @@ app.post("/api/auth/verify", async (c) => {
 
 // Get active admin key for seamless local development
 app.get("/api/auth/current-key", (c) => {
-  const host = c.req.header("host") || "";
-  const isLocal =
-    host.includes("localhost") ||
-    host.includes("127.0.0.1") ||
-    host.includes("0.0.0.0") ||
-    host.includes("[::1]");
+  if (!isLocalRequest(c)) return c.json({ ok: false, isLocal: false }, 403);
   const adminKey = getOrGenerateAdminKey();
   return c.json({
     ok: true,
     key: adminKey,
-    isLocal,
+    isLocal: true,
   });
 });
 
@@ -60,11 +54,11 @@ app.route("/api/upload", uploadRouter);
 app.route("/api/render", renderRouter);
 
 // Static uploads serving
-const UPLOAD_DIR = join(process.cwd(), "data", "uploads");
+const UPLOAD_DIR = join(resolveDataDir(), "uploads");
 if (!existsSync(UPLOAD_DIR)) {
   mkdirSync(UPLOAD_DIR, { recursive: true });
 }
-app.use("/uploads/*", serveStatic({ root: "./data" }));
+app.use("/uploads/*", serveStatic({ root: resolveDataDir() }));
 
 // Static local font serving
 app.get("/fonts/:filename", async (c) => {
@@ -111,19 +105,20 @@ if (existsSync(DIST_DIR)) {
 }
 
 const PORT = Number(process.env.PORT || 4890);
-const adminKey = getOrGenerateAdminKey();
+getOrGenerateAdminKey();
 
 console.log(`
 ┌────────────────────────────────────────────────────────┐
 │               ⚡ Typeset Studio Server                 │
 ├────────────────────────────────────────────────────────┤
 │  Web URL:    http://localhost:${PORT}                   │
-│  Admin Key:  ${adminKey}                      │
 │  Protected:  X-Admin-Key header required               │
 └────────────────────────────────────────────────────────┘
 `);
 
 export default {
+  hostname: process.env.TYPESET_HOST || "127.0.0.1",
   port: PORT,
-  fetch: app.fetch,
+  fetch: (request: Request, server: Bun.Server<undefined>) =>
+    app.fetch(request, { peerAddress: server.requestIP(request)?.address }),
 };
