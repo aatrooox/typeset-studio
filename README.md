@@ -162,7 +162,7 @@ npm install @akairos/typeset-studio
 ### 1. 服务健康检查 (`GET /api/health`)
 ```bash
 curl http://localhost:4890/api/health
-# {"status":"ok","name":"Typeset Studio Server","version":"0.2.2"}
+# {"status":"ok","name":"Typeset Studio Server","version":"0.2.5"}
 ```
 
 ### 2. 槽位解析与排版 (`POST /api/render`)
@@ -359,4 +359,4 @@ zzp render --state /absolute/path/workflow-state.json \
 
 模板只保存文件或 URL 引用，不嵌入、不自动打包迁移。`/uploads/...` 由实际渲染方的 `TYPESET_DATA_DIR` 解析，本地插件和编辑器应使用同一目录；远程模式使用服务端目录。模板中的绝对路径必须在渲染机器存在，HTTP URL 必须可访问。远程调用会传输任务替换中本地文件的字节，但不会复制原模板素材。缺失固定素材、未知替换标识或重复标识会明确报错，终止出图。
 
-本功能尚未随 npm 发布。本地联调时，将 pipeline 的 `plugins.imageRenderer` 指向本仓库 `src/adapter.ts` 或构建后的 `dist/lib/adapter.js`，避免继续加载已安装的旧版本。
+固定素材和模板优先渲染已随 `@akairos/typeset-studio@0.2.5` 发布。正式 Pipeline 使用 npm 入口；本地源码入口仅用于联调未发布的改动。运行时模板和上传图片不打进 npm 包，应通过 Pipeline 运行时配置包同步。

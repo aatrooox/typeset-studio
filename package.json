@@ -1,6 +1,6 @@
 {
   "name": "@akairos/typeset-studio",
-  "version": "0.2.2",
+  "version": "0.2.5",
   "description": "Algorithmic typesetting studio & zzhub-pipeline image renderer plugin",
   "publishConfig": {
     "access": "public"
@@ -32,7 +32,6 @@
     "dist/index.html",
     "dist/lib",
     "src",
-    "data/templates",
     "public/fonts/README.md",
     "public/fonts/fonts.json",
     "README.md"

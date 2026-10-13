@@ -1,0 +1,3 @@
+# Runtime data must never ship in the public package.
+data/
+.env
