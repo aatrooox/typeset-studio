@@ -88,7 +88,7 @@
 ### 1. 克隆与安装依赖
 
 ```bash
-git clone https://github.com/aatrooox/typeset-studio.git
+git clone https://github.com/k7airos/typeset-studio.git
 cd typeset-studio
 
 # 使用 Bun 一键安装

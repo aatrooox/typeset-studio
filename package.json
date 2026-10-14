@@ -7,9 +7,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aatrooox/typeset-studio.git"
+    "url": "git+https://github.com/k7airos/typeset-studio.git"
   },
-  "homepage": "https://github.com/aatrooox/typeset-studio#readme",
+  "homepage": "https://github.com/k7airos/typeset-studio#readme",
   "license": "MIT",
   "type": "module",
   "main": "./dist/lib/index.js",
