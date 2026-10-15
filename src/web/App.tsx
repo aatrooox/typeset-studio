@@ -4,7 +4,8 @@ import { CanvasViewport } from "./components/CanvasViewport";
 import { EditorSidebar } from "./components/EditorSidebar";
 import { Header } from "./components/Header";
 import { ParamsInspector } from "./components/ParamsInspector";
-import { TemplateModal } from "./components/TemplateModal";
+import { TemplateDrawer } from "./components/TemplateDrawer";
+import { SaveTemplateModal } from "./components/SaveTemplateModal";
 import { useAuth } from "./hooks/useAuth";
 import { useTypeset } from "./hooks/useTypeset";
 
@@ -57,7 +58,9 @@ export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<"grid" | "stack">("grid");
   const [zoom, setZoom] = useState<number>(0.45);
   const [isAutoFit, setIsAutoFit] = useState<boolean>(true);
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isTemplateDrawerOpen, setIsTemplateDrawerOpen] = useState(false);
+  const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
+  const [templateRefreshKey, setTemplateRefreshKey] = useState(0);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -251,7 +254,10 @@ export const App: React.FC = () => {
         onZoomChange={handleZoomChange}
         onAutoFit={handleAutoFit}
         isAutoFit={isAutoFit}
-        onOpenTemplates={() => setIsTemplateModalOpen(true)}
+        onOpenTemplates={() => setIsTemplateDrawerOpen((open) => !open)}
+        isTemplateDrawerOpen={isTemplateDrawerOpen}
+        templateName={config.name}
+        onSaveTemplate={() => setIsSaveTemplateOpen(true)}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onExport={handleExport}
         isExporting={isExporting}
@@ -300,6 +306,10 @@ export const App: React.FC = () => {
           config={config}
           onUpdateAlgorithm={updateAlgorithm}
           onUpdateTheme={updateTheme}
+          onUpdateCanvasStyle={(canvasStyle) => setConfig((prev) => ({
+            ...prev, canvasStyle,
+            theme: { ...prev.theme, bgColor: canvasStyle.fill?.type === "solid" ? canvasStyle.fill.color : canvasStyle.fill?.stops[0].color || prev.theme.bgColor },
+          }))}
           onUpdateTypography={updateTypography}
           onUpdateSafeArea={updateSafeArea}
           onUpdateBranding={(footer, watermark) => {
@@ -319,17 +329,27 @@ export const App: React.FC = () => {
             }));
           }}
         />
+        <TemplateDrawer
+          isOpen={isTemplateDrawerOpen}
+          onClose={() => setIsTemplateDrawerOpen(false)}
+          refreshKey={templateRefreshKey}
+          onApplyTemplate={loadTemplate}
+          adminKey={adminKey}
+        />
       </div>
 
       {/* Modals */}
-      <TemplateModal
-        isOpen={isTemplateModalOpen}
-        onClose={() => setIsTemplateModalOpen(false)}
+      <SaveTemplateModal
+        isOpen={isSaveTemplateOpen}
+        onClose={() => setIsSaveTemplateOpen(false)}
         currentConfig={{
           ...config,
           images,
         }}
-        onApplyTemplate={loadTemplate}
+        onSaved={(template) => {
+          setConfig((prev) => ({ ...prev, id: template.id, name: template.name, slot: template.slot }));
+          setTemplateRefreshKey((key) => key + 1);
+        }}
         adminKey={adminKey}
       />
 

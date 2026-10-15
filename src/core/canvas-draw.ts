@@ -1,4 +1,5 @@
 import { computeStageDimensions } from "./geometry";
+import { drawCanvasFill, drawCanvasPattern, drawCanvasBorder, validateCanvasStyle } from "./canvas-style";
 import { CanvasSpec, FlowPage, TypesetConfig } from "./types";
 
 /**
@@ -85,12 +86,14 @@ export async function drawPageToContext(
 ): Promise<void> {
   const { page, spec, config, totalPageCount = 1, getImage, isServer = false } = options;
   const { algorithm, theme, chrome } = config;
+  validateCanvasStyle(config.canvasStyle);
 
   // 1. Clear & Background Fill
   ctx.save();
   ctx.fillStyle = theme.bgColor;
   ctx.fillRect(0, 0, spec.width, spec.height);
   ctx.restore();
+  if (config.canvasStyle?.fill) drawCanvasFill(ctx, spec, config.canvasStyle.fill);
 
   // 主题背景、纹理和装饰图使用整张画布坐标。
   const coverTheme = config.coverTheme;
@@ -109,26 +112,28 @@ export async function drawPageToContext(
     ctx.restore();
   };
   if (coverTheme) {
-    const fill = coverTheme.background.fill;
-    ctx.save();
-    if (fill.type === "solid") ctx.fillStyle = fill.color;
-    else {
-      let gradient;
-      if (fill.type === "linear") {
-        const angle = fill.angle * Math.PI / 180;
-        const dx = Math.cos(angle) * spec.width / 2;
-        const dy = Math.sin(angle) * spec.height / 2;
-        gradient = ctx.createLinearGradient(spec.width / 2 - dx, spec.height / 2 - dy, spec.width / 2 + dx, spec.height / 2 + dy);
-      } else {
-        const x = spec.width * fill.position.x / 100;
-        const y = spec.height * fill.position.y / 100;
-        gradient = ctx.createRadialGradient(x, y, 0, x, y, Math.hypot(spec.width, spec.height));
+    if (!config.canvasStyle?.fill) {
+      const fill = coverTheme.background.fill;
+      ctx.save();
+      if (fill.type === "solid") ctx.fillStyle = fill.color;
+      else {
+        let gradient;
+        if (fill.type === "linear") {
+          const angle = fill.angle * Math.PI / 180;
+          const dx = Math.cos(angle) * spec.width / 2;
+          const dy = Math.sin(angle) * spec.height / 2;
+          gradient = ctx.createLinearGradient(spec.width / 2 - dx, spec.height / 2 - dy, spec.width / 2 + dx, spec.height / 2 + dy);
+        } else {
+          const x = spec.width * fill.position.x / 100;
+          const y = spec.height * fill.position.y / 100;
+          gradient = ctx.createRadialGradient(x, y, 0, x, y, Math.hypot(spec.width, spec.height));
+        }
+        for (const stop of fill.stops) gradient.addColorStop(stop.offset / 100, stop.color);
+        ctx.fillStyle = gradient;
       }
-      for (const stop of fill.stops) gradient.addColorStop(stop.offset / 100, stop.color);
-      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, spec.width, spec.height);
+      ctx.restore();
     }
-    ctx.fillRect(0, 0, spec.width, spec.height);
-    ctx.restore();
     await drawCoverImage(coverTheme.background.image);
     if (coverTheme.background.overlay) {
       ctx.save();
@@ -138,36 +143,40 @@ export async function drawPageToContext(
       ctx.restore();
     }
     const decoration = coverTheme.decoration;
-    ctx.save();
-    ctx.strokeStyle = ctx.fillStyle = decoration.color;
-    ctx.globalAlpha = decoration.opacity;
-    const size = Math.max(8, decoration.size);
-    ctx.beginPath();
-    if (["lines", "grid", "dots"].includes(decoration.pattern)) {
-      for (let x = 0; x < spec.width; x += size) {
-        if (decoration.pattern === "grid") { ctx.moveTo(x, 0); ctx.lineTo(x, spec.height); }
-        if (decoration.pattern === "dots") {
-          for (let y = 0; y < spec.height; y += size) { ctx.moveTo(x + 2, y); ctx.arc(x, y, 2, 0, Math.PI * 2); }
+    if (!config.canvasStyle?.pattern) {
+      ctx.save();
+      ctx.strokeStyle = ctx.fillStyle = decoration.color;
+      ctx.globalAlpha = decoration.opacity;
+      const size = Math.max(8, decoration.size);
+      ctx.beginPath();
+      if (["lines", "grid", "dots"].includes(decoration.pattern)) {
+        for (let x = 0; x < spec.width; x += size) {
+          if (decoration.pattern === "grid") { ctx.moveTo(x, 0); ctx.lineTo(x, spec.height); }
+          if (decoration.pattern === "dots") {
+            for (let y = 0; y < spec.height; y += size) { ctx.moveTo(x + 2, y); ctx.arc(x, y, 2, 0, Math.PI * 2); }
+          }
+        }
+        if (decoration.pattern !== "dots") {
+          for (let y = 0; y < spec.height; y += size) { ctx.moveTo(0, y); ctx.lineTo(spec.width, y); }
+        }
+      } else if (decoration.pattern === "rings") {
+        for (let radius = size; radius < Math.hypot(spec.width, spec.height); radius += size) {
+          ctx.moveTo(spec.width / 2 + radius, spec.height / 2);
+          ctx.arc(spec.width / 2, spec.height / 2, radius, 0, Math.PI * 2);
+        }
+      } else if (decoration.pattern === "burst") {
+        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / Math.max(8, Math.round(size / 3))) {
+          ctx.moveTo(spec.width / 2, spec.height / 2);
+          ctx.lineTo(spec.width / 2 + Math.cos(angle) * spec.width, spec.height / 2 + Math.sin(angle) * spec.height);
         }
       }
-      if (decoration.pattern !== "dots") {
-        for (let y = 0; y < spec.height; y += size) { ctx.moveTo(0, y); ctx.lineTo(spec.width, y); }
-      }
-    } else if (decoration.pattern === "rings") {
-      for (let radius = size; radius < Math.hypot(spec.width, spec.height); radius += size) {
-        ctx.moveTo(spec.width / 2 + radius, spec.height / 2);
-        ctx.arc(spec.width / 2, spec.height / 2, radius, 0, Math.PI * 2);
-      }
-    } else if (decoration.pattern === "burst") {
-      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / Math.max(8, Math.round(size / 3))) {
-        ctx.moveTo(spec.width / 2, spec.height / 2);
-        ctx.lineTo(spec.width / 2 + Math.cos(angle) * spec.width, spec.height / 2 + Math.sin(angle) * spec.height);
-      }
+      if (decoration.pattern === "dots") ctx.fill(); else ctx.stroke();
+      ctx.restore();
     }
-    if (decoration.pattern === "dots") ctx.fill(); else ctx.stroke();
-    ctx.restore();
     await drawCoverImage(decoration.image);
   }
+
+  if (config.canvasStyle?.pattern) drawCanvasPattern(ctx, spec, config.canvasStyle.pattern);
 
   // 2. Compute Stage Layout Dimensions
   const { stageX, stageY } = computeStageDimensions(
@@ -400,4 +409,5 @@ export async function drawPageToContext(
       ctx.restore();
     }
   }
+  drawCanvasBorder(ctx, spec, config.canvasStyle?.border);
 }

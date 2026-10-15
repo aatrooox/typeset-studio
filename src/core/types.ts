@@ -152,6 +152,34 @@ export interface TypesetChromeConfig {
 
 export type TemplateSlot = "article_cover" | "newspic_cover" | "newspic_content";
 
+export type CanvasFill = { type: "solid"; color: string } |
+  { type: "linear"; angle: number; stops: Array<{ color: string; offset: number }> } |
+  { type: "radial"; position: { x: number; y: number }; stops: Array<{ color: string; offset: number }> };
+
+export interface CanvasPattern {
+  pattern: "none" | "lines" | "grid" | "dots" | "rings" | "burst" | "diagonal" | "waves" | "checker" | "grain";
+  color: string;
+  opacity: number;
+  size: number;
+}
+
+export interface CanvasBorder {
+  style: "none" | "solid" | "dashed" | "double" | "corners" | "gradient";
+  color: string;
+  endColor: string;
+  width: number;
+  inset: number;
+  radius: number;
+  opacity: number;
+}
+
+// 背景装饰独立于文字主题，封面和正文模板共用。
+export interface CanvasStyle {
+  fill?: CanvasFill;
+  pattern?: CanvasPattern;
+  border?: CanvasBorder;
+}
+
 export interface TypesetConfig {
   id?: string;
   name: string;
@@ -168,6 +196,7 @@ export interface TypesetConfig {
   chrome?: TypesetChromeConfig;
   images?: FlowImage[];
   coverTheme?: PipelineCoverTheme;
+  canvasStyle?: CanvasStyle;
 }
 
 export interface TypesetResult {
@@ -198,9 +227,7 @@ export interface PipelineCoverTheme {
   typography: { title: CoverFont; subtitle: CoverFont; footer: CoverFont };
   colors: { text: string; accent: string; muted: string };
   background: {
-    fill: { type: "solid"; color: string } |
-      { type: "linear"; angle: number; stops: Array<{ color: string; offset: number }> } |
-      { type: "radial"; position: { x: number; y: number }; stops: Array<{ color: string; offset: number }> };
+    fill: CanvasFill;
     image: CoverImage | null;
     overlay: { color: string; opacity: number } | null;
   };

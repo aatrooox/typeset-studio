@@ -210,6 +210,7 @@ export function useTypeset(adminKey: string, isVerified: boolean | null) {
     setConfig((prev) => ({
       ...prev,
       theme: { ...prev.theme, ...partial },
+      ...(partial.bgColor ? { canvasStyle: { ...prev.canvasStyle, fill: { type: "solid" as const, color: partial.bgColor } } } : {}),
     }));
   };
 
@@ -358,7 +359,8 @@ export function useTypeset(adminKey: string, isVerified: boolean | null) {
   const loadTemplate = (tpl: TypesetConfig) => {
     try {
       validateTemplateAssets(tpl.images);
-      setConfig(tpl);
+      // 套用后编辑的是副本，名称用于顶部状态栏和另存为模板。
+      setConfig({ ...tpl, name: `${tpl.name || "未命名模板"}-副本` });
       setBackgroundLayouts({});
       setImages((prev) => {
         const next = applyTemplateImages(prev, tpl.images);

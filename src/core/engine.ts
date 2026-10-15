@@ -4,6 +4,7 @@ import { paginateBlocks } from "./obstacle-flow";
 import { computeBlockStyles } from "./typography";
 import { resolveImagePlacement } from "./image-layout";
 import { validateTemplateAssets } from "./template";
+import { validateCanvasStyle } from "./canvas-style";
 import {
   FlowBlock,
   FlowImage,
@@ -86,6 +87,7 @@ export function runTypeset(params: {
     throw new RangeError("Invalid page constraints: maxPages must be 0 or at least minPages");
   }
   validateTemplateAssets(images);
+  validateCanvasStyle(config.canvasStyle);
   if (images.some((image) => !image.repeatEveryPage && image.pageIndex != null && (!Number.isInteger(image.pageIndex) || image.pageIndex < 1 || image.pageIndex > 50))) {
     throw new RangeError("Image pageIndex must be an integer between 1 and 50");
   }

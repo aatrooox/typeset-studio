@@ -105,3 +105,59 @@ it("renders pipeline cover theme gradients, decoration, typography and minimum f
   expect(smallArea.config.coverTheme!.typography.title.fontSize).toBeLessThan(font.fontSize);
   expect(smallArea.config.coverTheme!.typography.title.fontSize).toBeGreaterThanOrEqual(font.minFontSize);
 });
+
+// 实际像素校验渐变、花纹、边框以及重复渲染的确定性。
+describe("Canvas backgrounds and borders", () => {
+  it("draws editable fills, every pattern and every border deterministically", async () => {
+    const { createCanvas } = await import("@napi-rs/canvas");
+    const { drawCanvasFill, drawCanvasPattern, drawCanvasBorder, validateCanvasStyle, DEFAULT_PATTERN, DEFAULT_BORDER, PATTERN_LABELS, BORDER_LABELS } = await import("./canvas-style");
+    const spec = { ...runTypeset({ markdown: "", config: getDefaultConfig() }).canvasSpec, width: 120, height: 160 };
+    const canvas = createCanvas(spec.width, spec.height);
+    const ctx = canvas.getContext("2d");
+    const reset = () => { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, spec.width, spec.height); };
+    const pixel = (x: number, y: number) => Array.from(ctx.getImageData(x, y, 1, 1).data);
+    const changedPixels = () => Array.from(ctx.getImageData(0, 0, spec.width, spec.height).data).filter((value, index) => index % 4 !== 3 && value !== 255).length;
+    drawCanvasFill(ctx as any, spec, { type: "linear", angle: 0, stops: [{ color: "#ff0000", offset: 0 }, { color: "#0000ff", offset: 100 }] });
+    expect(pixel(0, 80)[0]).toBeGreaterThan(250);
+    expect(pixel(119, 80)[2]).toBeGreaterThan(250);
+    drawCanvasFill(ctx as any, spec, { type: "radial", position: { x: 0, y: 0 }, stops: [{ color: "#ffffff", offset: 0 }, { color: "#000000", offset: 100 }] });
+    expect(pixel(0, 0)[0]).toBeGreaterThan(pixel(119, 159)[0] + 200);
+    for (const pattern of Object.keys(PATTERN_LABELS) as Array<keyof typeof PATTERN_LABELS>) {
+      reset();
+      drawCanvasPattern(ctx as any, spec, { ...DEFAULT_PATTERN, pattern, color: "#123456", opacity: 1, size: 24 });
+      expect(changedPixels() > 0).toBe(pattern !== "none");
+      const first = canvas.toBuffer("image/png");
+      reset();
+      drawCanvasPattern(ctx as any, spec, { ...DEFAULT_PATTERN, pattern, color: "#123456", opacity: 1, size: 24 });
+      expect(first.equals(canvas.toBuffer("image/png"))).toBe(true);
+    }
+    for (const style of Object.keys(BORDER_LABELS) as Array<keyof typeof BORDER_LABELS>) {
+      reset();
+      drawCanvasBorder(ctx as any, spec, { ...DEFAULT_BORDER, style, inset: 10, width: 2, color: "#123456" });
+      expect(changedPixels() > 0).toBe(style !== "none");
+    }
+    expect(() => validateCanvasStyle({ pattern: { ...DEFAULT_PATTERN, size: 0 } })).toThrow(RangeError);
+    expect(() => validateCanvasStyle({ fill: { type: "linear", angle: 0, stops: [{ color: "bad", offset: 0 }, { color: "#000000", offset: 100 }] } })).toThrow(RangeError);
+  });
+
+  it("renders all preset templates and retains borders above a fixed image", async () => {
+    const { CANVAS_PRESETS } = await import("./canvas-presets");
+    const { validateCanvasStyle } = await import("./canvas-style");
+    const { createCanvas } = await import("@napi-rs/canvas");
+    const { renderPageToCanvas } = await import("./canvas-renderer");
+    for (const config of CANVAS_PRESETS) {
+      validateCanvasStyle(config.canvasStyle);
+      const result = runTypeset({ markdown: "# 模板试色\n记录想法，让文字留在喜欢的背景上。", config });
+      expect(result.pageCount).toBe(1);
+      const png = await renderPageToPng(result.pages[0], result.canvasSpec, config);
+      expect(png.length).toBeGreaterThan(1000);
+    }
+    const white = createCanvas(10, 10);
+    white.getContext("2d").fillStyle = "#ffffff";
+    white.getContext("2d").fillRect(0, 0, 10, 10);
+    const config = { ...getDefaultConfig(), canvasStyle: { border: { style: "solid" as const, color: "#ff0000", endColor: "#ff0000", inset: 20, width: 8, radius: 0, opacity: 1 } } };
+    const result = runTypeset({ markdown: "正文", config, images: [{ id: "bg", src: `data:image/png;base64,${white.toBuffer("image/png").toString("base64")}`, alt: "", isAbsolute: true, zIndex: 0, x: -100, y: -100, width: 2000, height: 2000, templateAssetKey: "background" }] });
+    const canvas = await renderPageToCanvas(result.pages[0], result.canvasSpec, config);
+    expect(Array.from(canvas.getContext("2d").getImageData(24, 300, 1, 1).data)).toEqual([255, 0, 0, 255]);
+  });
+});

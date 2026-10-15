@@ -18,6 +18,7 @@ import {
   TypesetConfig,
 } from "../../core/types";
 import { useLocalFonts } from "../hooks/useLocalFonts";
+import { CanvasStyleInspector } from "./CanvasStyleInspector";
 
 interface ParamsInspectorProps {
   config: TypesetConfig;
@@ -27,6 +28,7 @@ interface ParamsInspectorProps {
   onUpdateSafeArea: (partial: Partial<AlgorithmParams["safeArea"]>) => void;
   onUpdateBranding: (footer: string, watermark: string) => void;
   onUpdateChrome: (partial: Partial<TypesetChromeConfig>) => void;
+  onUpdateCanvasStyle: (style: NonNullable<TypesetConfig["canvasStyle"]>) => void;
 }
 
 const PRESET_FONT_OPTIONS = [
@@ -48,6 +50,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
   onUpdateSafeArea,
   onUpdateBranding,
   onUpdateChrome,
+  onUpdateCanvasStyle,
 }) => {
   const { algorithm, theme, typography } = config;
   const { fonts: localFonts, loading: loadingFonts, refreshFonts } = useLocalFonts();
@@ -479,7 +482,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
-                value={theme.bgColor}
+                value={config.canvasStyle?.fill?.type === "solid" ? config.canvasStyle.fill.color : theme.bgColor}
                 onChange={(e) => onUpdateTheme({ bgColor: e.target.value })}
                 className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
               />
@@ -490,6 +493,8 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
           </div>
         </div>
       </div>
+
+      <CanvasStyleInspector config={config} onChange={onUpdateCanvasStyle} />
 
       {/* Section 6: Header, Footer & Chrome Decor */}
       <div className="p-3.5">

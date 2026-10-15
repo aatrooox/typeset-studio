@@ -183,3 +183,25 @@ describe("Fixed asset rendering API", () => {
     }
   });
 });
+
+it("adds Canvas presets once, preserves edits and renders saved colors through the template API", async () => {
+  const { CANVAS_PRESETS } = await import("../../core/canvas-presets");
+  const list = await (await app.request("/api/templates", { headers: authHeaders })).json();
+  for (const preset of CANVAS_PRESETS) expect(list.templates.some((template: { id: string }) => template.id === preset.id)).toBe(true);
+  const preset = CANVAS_PRESETS[0];
+  try {
+    const custom = { ...preset, canvasStyle: { ...preset.canvasStyle, fill: { type: "solid", color: "#123456" } } };
+    expect((await app.request("/api/templates", { method: "POST", headers: authHeaders, body: JSON.stringify(custom) })).status).toBe(200);
+    const loaded = await (await app.request(`/api/templates/${preset.id}`, { headers: authHeaders })).json();
+    expect(loaded.template.canvasStyle.fill.color).toBe("#123456");
+    const rendered = await (await app.request("/api/render", { method: "POST", headers: authHeaders, body: JSON.stringify({ template: preset.id, markdown: "# 自定义背景", preserveTemplateStyle: true, config: { canvasStyle: { fill: { type: "solid", color: "#ffffff" } } } }) })).json();
+    expect(rendered.result.config.canvasStyle.fill.color).toBe("#123456");
+    const invalid = await app.request("/api/templates", { method: "POST", headers: authHeaders, body: JSON.stringify({ ...custom, canvasStyle: { pattern: { pattern: "grid", color: "#123456", opacity: 1, size: 0 } } }) });
+    expect(invalid.status).toBe(400);
+    await app.request(`/api/templates/${preset.id}`, { method: "DELETE", headers: authHeaders });
+    const again = await (await app.request("/api/templates", { headers: authHeaders })).json();
+    expect(again.templates.some((template: { id: string }) => template.id === preset.id)).toBe(false);
+  } finally {
+    await app.request("/api/templates", { method: "POST", headers: authHeaders, body: JSON.stringify(preset) });
+  }
+});

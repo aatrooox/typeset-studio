@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, FolderOpen, Key, Maximize2, Moon, RefreshCw, Sun, ZoomIn, ZoomOut } from "lucide-react";
+import { Download, FolderOpen, Key, Maximize2, Moon, RefreshCw, Save, Sun, ZoomIn, ZoomOut } from "lucide-react";
 import { AspectRatioType } from "../../core/types";
 
 interface HeaderProps {
@@ -10,6 +10,9 @@ interface HeaderProps {
   onAutoFit?: () => void;
   isAutoFit?: boolean;
   onOpenTemplates: () => void;
+  isTemplateDrawerOpen: boolean;
+  templateName?: string;
+  onSaveTemplate: () => void;
   onOpenAuth: () => void;
   onExport: () => void;
   isExporting: boolean;
@@ -34,6 +37,9 @@ export const Header: React.FC<HeaderProps> = ({
   onAutoFit,
   isAutoFit,
   onOpenTemplates,
+  isTemplateDrawerOpen,
+  templateName,
+  onSaveTemplate,
   onOpenAuth,
   onExport,
   isExporting,
@@ -45,17 +51,17 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="h-14 border-b border-[#eaeaea] dark:border-[#222222] bg-white/80 dark:bg-[#000000]/80 backdrop-blur-md px-4 flex items-center justify-between select-none z-30 shrink-0 transition-colors">
       {/* Brand & Status */}
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <div className="flex items-center gap-2 font-semibold text-[#171717] dark:text-white tracking-tight text-sm">
           <span className="flex items-center justify-center w-6 h-6 rounded bg-black dark:bg-white text-white dark:text-black font-black text-xs shadow-sm">
             ▲
           </span>
-          <span>Typeset Studio</span>
+          <span className="hidden 2xl:inline">Typeset Studio</span>
         </div>
-        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden md:inline">v0.2.5</span>
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#111111] border border-[#e5e5e5] dark:border-[#222222] text-[11px] text-emerald-600 dark:text-[#00e676]">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#00e676] animate-pulse" />
-          <span className="font-mono">Ready</span>
+        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden 2xl:inline">v0.2.6</span>
+        <div title={templateName || "未命名模板"} className="flex min-w-0 items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#111111] border border-[#e5e5e5] dark:border-[#222222] text-[11px] text-emerald-600 dark:text-[#00e676]">
+          <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-[#00e676]" />
+          <span aria-live="polite" className="max-w-40 truncate">{templateName || "未命名模板"}</span>
         </div>
       </div>
 
@@ -73,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : "text-[#666666] dark:text-[#888888] hover:text-[#171717] dark:hover:text-[#cccccc] hover:bg-[#eaeaea] dark:hover:bg-[#141414]"
               }`}
             >
-              <span>{item.label}</span>
+              <span className="hidden xl:inline">{item.label}</span>
               <span
                 className={`text-[10px] font-mono px-1 py-0.2 rounded ${
                   isActive
@@ -146,13 +152,22 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        {/* Templates Modal button */}
+        {/* 模板库开关 */}
         <button
           onClick={onOpenTemplates}
+          aria-expanded={isTemplateDrawerOpen}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#eaeaea] dark:border-[#222222] bg-white dark:bg-[#0a0a0a] hover:bg-[#f5f5f5] dark:hover:bg-[#161616] text-xs text-[#333333] dark:text-[#cccccc] hover:text-black dark:hover:text-white transition-all btn-vercel"
         >
           <FolderOpen className="w-3.5 h-3.5 text-[#777777] dark:text-[#888888]" />
           <span>模板库</span>
+        </button>
+
+        <button
+          onClick={onSaveTemplate}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#eaeaea] dark:border-[#222222] bg-white dark:bg-[#0a0a0a] hover:bg-[#f5f5f5] dark:hover:bg-[#161616] text-xs text-[#333333] dark:text-[#cccccc] transition-all btn-vercel"
+        >
+          <Save className="w-3.5 h-3.5" />
+          <span>保存模板</span>
         </button>
 
         {/* Export image button */}

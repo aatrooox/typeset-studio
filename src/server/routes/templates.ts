@@ -5,6 +5,8 @@ import { getDefaultConfig } from "../../core/engine";
 import { TemplateSlot, TypesetConfig } from "../../core/types";
 import { resolveDataDir } from "../../core/data-dir";
 import { validateTemplateAssets } from "../../core/template";
+import { validateCanvasStyle } from "../../core/canvas-style";
+import { CANVAS_PRESETS } from "../../core/canvas-presets";
 
 export { resolveDataDir } from "../../core/data-dir";
 
@@ -22,6 +24,17 @@ function ensureTemplatesDir(): void {
   if (!existsSync(seedMarker)) {
     seedDefaultTemplates();
     try { writeFileSync(seedMarker, "1"); } catch { /* 只读安装目录保留读取能力。 */ }
+  }
+  // 新预设仅补充一次，不覆盖已编辑模板，也不重新生成用户删除的预设。
+  const canvasMarker = join(TEMPLATES_DIR, ".canvas-presets-v1");
+  if (!existsSync(canvasMarker)) {
+    try {
+      for (const preset of CANVAS_PRESETS) {
+        const path = join(TEMPLATES_DIR, `${preset.id}.json`);
+        if (!existsSync(path)) writeFileSync(path, JSON.stringify(preset, null, 2), "utf-8");
+      }
+      writeFileSync(canvasMarker, "1");
+    } catch { /* 只读安装目录继续使用现有模板。 */ }
   }
 }
 
@@ -334,6 +347,7 @@ export const BUILTIN_PRESETS: TypesetConfig[] = [
         showFillRatio: false,
       },
     },
+    ...CANVAS_PRESETS,
   ];
 
 function seedDefaultTemplates(): void {
@@ -611,6 +625,7 @@ templatesRouter.post("/", async (c) => {
 
   try {
     validateTemplateAssets(body.images);
+    validateCanvasStyle(body.canvasStyle);
   } catch (error) {
     return c.json({ ok: false, error: error instanceof Error ? error.message : "无效的模板素材" }, 400);
   }
