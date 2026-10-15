@@ -1,6 +1,6 @@
 {
   "name": "@akairos/typeset-studio",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Algorithmic typesetting studio & zzhub-pipeline image renderer plugin",
   "publishConfig": {
     "access": "public"

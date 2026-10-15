@@ -17,7 +17,7 @@ app.get("/api/health", (c) => {
   return c.json({
     status: "ok",
     name: "Typeset Studio Server",
-    version: "0.2.6",
+    version: "0.2.7",
     time: new Date().toISOString(),
   });
 });

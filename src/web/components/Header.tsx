@@ -23,7 +23,7 @@ interface HeaderProps {
 }
 
 const RATIO_ITEMS: Array<{ id: AspectRatioType; label: string; ratioTag: string }> = [
-  { id: "wechat-cover-2.35", label: "微信封面", ratioTag: "2.35:1" },
+  { id: "wechat-cover-2.35", label: "微信封面", ratioTag: "3.35:1" },
   { id: "longform-3-4", label: "通用长图文", ratioTag: "3:4" },
   { id: "wide-16-9", label: "通用宽屏", ratioTag: "16:9" },
   { id: "square-1-1", label: "通用正方形", ratioTag: "1:1" },
@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
           <span className="hidden 2xl:inline">Typeset Studio</span>
         </div>
-        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden 2xl:inline">v0.2.6</span>
+        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden 2xl:inline">v0.2.7</span>
         <div title={templateName || "未命名模板"} className="flex min-w-0 items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#111111] border border-[#e5e5e5] dark:border-[#222222] text-[11px] text-emerald-600 dark:text-[#00e676]">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-[#00e676]" />
           <span aria-live="polite" className="max-w-40 truncate">{templateName || "未命名模板"}</span>

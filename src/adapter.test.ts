@@ -24,7 +24,7 @@ describe("Typeset Studio — zzhub-pipeline ImageRenderPlugin Adapter", () => {
     expect(fontCheck?.ok).toBe(true);
   });
 
-  it("renders wechat-article 2.35:1 cover asset correctly", async () => {
+  it("renders wechat-article 3.35:1 cover asset correctly", async () => {
     const outDir = join(tempTestDir, "article");
     const input: ImageRenderInput = {
       title: "大模型架构演进：从密集注意力到专家混合架构",
@@ -57,6 +57,8 @@ describe("Typeset Studio — zzhub-pipeline ImageRenderPlugin Adapter", () => {
     expect(buf[1]).toBe(0x50); // 'P'
     expect(buf[2]).toBe(0x4e); // 'N'
     expect(buf[3]).toBe(0x47); // 'G'
+    expect(buf.readUInt32BE(16)).toBe(3350);
+    expect(buf.readUInt32BE(20)).toBe(1000);
   });
 
   it("renders wechat-newspic 3:4 multi-page poster and articles", async () => {

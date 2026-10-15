@@ -37,6 +37,8 @@ describe("Template Slots & Fallback Compatibility", () => {
     expect(data.ok).toBe(true);
     expect(data.slot).toBe("article_cover");
     expect(data.result.canvasSpec.id).toBe("wechat-cover-2.35");
+    expect(data.result.canvasSpec.width).toBe(3350);
+    expect(data.result.canvasSpec.height).toBe(1000);
   });
 
   it("renders wechat-newspic content route by auto-resolving newspic_content slot", async () => {

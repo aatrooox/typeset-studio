@@ -42,7 +42,7 @@ export const BUILTIN_PRESETS: TypesetConfig[] = [
     {
       ...getDefaultConfig("wechat-cover-2.35"),
       id: "tpl_wechat_cover_minimal",
-      name: "微信纯净大图封面 (2.35:1)",
+      name: "微信纯净大图封面 (3.35:1)",
       slot: "article_cover",
       algorithm: {
         ...getDefaultConfig("wechat-cover-2.35").algorithm,
@@ -97,7 +97,7 @@ export const BUILTIN_PRESETS: TypesetConfig[] = [
     {
       ...getDefaultConfig("wechat-cover-2.35"),
       id: "tpl_wechat_cover_editorial",
-      name: "微信杂志标封面 (2.35:1)",
+      name: "微信杂志标封面 (3.35:1)",
       slot: "article_cover",
       algorithm: {
         ...getDefaultConfig("wechat-cover-2.35").algorithm,

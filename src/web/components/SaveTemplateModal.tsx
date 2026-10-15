@@ -88,7 +88,7 @@ export const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
           <label className="flex flex-col gap-2 text-xs">
             保存到槽位
             <select value={saveSlot} onChange={(event) => setSaveSlot(event.target.value as TemplateSlot | "none")} className="bg-white dark:bg-[#141414] border border-[#d4d4d4] dark:border-[#333333] rounded px-3 py-2">
-              <option value="article_cover">文章封面 (2.35:1)</option>
+              <option value="article_cover">文章封面 (3.35:1)</option>
               <option value="newspic_cover">贴图封面 (3:4)</option>
               <option value="newspic_content">贴图内容 (3:4)</option>
               <option value="none">通用模板</option>

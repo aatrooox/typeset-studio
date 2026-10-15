@@ -4,7 +4,7 @@ import { renderPageToPng, renderTypesetResultToPngs } from "./canvas-renderer";
 import type { PipelineCoverTheme } from "./types";
 
 describe("Server-Side Canvas Native PNG Renderer", () => {
-  it("renders a single 2.35:1 WeChat cover page to a valid PNG buffer", async () => {
+  it("renders a single 3.35:1 WeChat cover with space for the square thumbnail", async () => {
     const config = getDefaultConfig("wechat-cover-2.35");
     const result = runTypeset({
       markdown: "# 纯算法无头出图测试\n基于 @napi-rs/canvas 毫秒级原生渲染",
@@ -21,6 +21,9 @@ describe("Server-Side Canvas Native PNG Renderer", () => {
     expect(pngBuffer[1]).toBe(0x50);
     expect(pngBuffer[2]).toBe(0x4e);
     expect(pngBuffer[3]).toBe(0x47);
+    expect(pngBuffer.readUInt32BE(16)).toBe(3350);
+    expect(pngBuffer.readUInt32BE(20)).toBe(1000);
+    expect(result.canvasSpec.ratio).toBe(3.35);
   });
 
   it("renders multi-page 3:4 longform article into multiple PNG buffers", async () => {
