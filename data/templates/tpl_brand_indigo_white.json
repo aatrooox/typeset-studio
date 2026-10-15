@@ -1,0 +1,70 @@
+{
+  "name": "品牌 · 静白细框",
+  "aspectRatio": "longform-3-4",
+  "algorithm": {
+    "baseFontSize": 40,
+    "scaleRatio": 1.22,
+    "lineHeightMultiplier": 1.6,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.84,
+    "contentBottomGap": 20,
+    "textAlign": "left",
+    "verticalAlign": "top",
+    "safeArea": {
+      "top": 144,
+      "right": 120,
+      "bottom": 126,
+      "left": 120
+    }
+  },
+  "theme": {
+    "bgColor": "#ffffff",
+    "textColor": "#1e1b4b",
+    "headingColor": "#1e1b4b",
+    "accentColor": "#6366f1",
+    "quoteColor": "#6366f1",
+    "captionColor": "#77758f",
+    "watermarkColor": "#77758f",
+    "cardBg": "#f4f4fc",
+    "borderSubtle": "#e5e5f1"
+  },
+  "typography": {
+    "headingFont": "PingFang SC",
+    "bodyFont": "PingFang SC"
+  },
+  "footerText": "",
+  "watermarkText": "",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": false,
+    "showPageNumber": false,
+    "showFooter": false,
+    "showFooterDivider": false,
+    "showFooterText": false,
+    "showFillRatio": false
+  },
+  "slot": "newspic_content",
+  "images": [],
+  "id": "tpl_brand_indigo_white",
+  "canvasStyle": {
+    "fill": {
+      "type": "solid",
+      "color": "#ffffff"
+    },
+    "pattern": {
+      "pattern": "none",
+      "color": "#6366f1",
+      "opacity": 0.12,
+      "size": 56
+    },
+    "border": {
+      "style": "solid",
+      "color": "#6366f1",
+      "endColor": "#6366f1",
+      "width": 2,
+      "inset": 44,
+      "radius": 0,
+      "opacity": 0.18
+    }
+  }
+}

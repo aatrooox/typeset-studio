@@ -1,0 +1,87 @@
+{
+  "name": "月蚀光场 · 径向渐变 / 圆环",
+  "aspectRatio": "longform-3-4",
+  "algorithm": {
+    "baseFontSize": 42,
+    "scaleRatio": 1.3,
+    "lineHeightMultiplier": 1.45,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.83,
+    "contentBottomGap": 20,
+    "textAlign": "left",
+    "verticalAlign": "top",
+    "safeArea": {
+      "top": 126,
+      "right": 108,
+      "bottom": 110,
+      "left": 108
+    }
+  },
+  "theme": {
+    "bgColor": "#53747a",
+    "textColor": "#f1eddf",
+    "headingColor": "#f1eddf",
+    "accentColor": "#ddba80",
+    "quoteColor": "#ddba80",
+    "captionColor": "#ddba80",
+    "watermarkColor": "#ddba80",
+    "cardBg": "#f5f5f5",
+    "borderSubtle": "#e5e5e5"
+  },
+  "typography": {
+    "headingFont": "Songti SC",
+    "bodyFont": "Songti SC"
+  },
+  "footerText": "",
+  "watermarkText": "",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": true,
+    "showPageNumber": true,
+    "showFooter": false,
+    "showFooterDivider": true,
+    "showFooterText": true,
+    "showFillRatio": false
+  },
+  "id": "tpl_canvas_eclipse",
+  "slot": "newspic_content",
+  "images": [],
+  "canvasStyle": {
+    "fill": {
+      "type": "radial",
+      "position": {
+        "x": 85,
+        "y": 12
+      },
+      "stops": [
+        {
+          "color": "#53747a",
+          "offset": 0
+        },
+        {
+          "color": "#182e38",
+          "offset": 45
+        },
+        {
+          "color": "#0e1d27",
+          "offset": 100
+        }
+      ]
+    },
+    "pattern": {
+      "pattern": "rings",
+      "color": "#e3c899",
+      "opacity": 0.1,
+      "size": 92
+    },
+    "border": {
+      "style": "gradient",
+      "color": "#ddba80",
+      "endColor": "#e3c899",
+      "width": 2,
+      "inset": 38,
+      "radius": 22,
+      "opacity": 0.65
+    }
+  }
+}

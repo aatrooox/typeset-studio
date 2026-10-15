@@ -1,0 +1,98 @@
+{
+  "name": "文章封面-适配myno",
+  "aspectRatio": "wechat-cover-2.35",
+  "algorithm": {
+    "baseFontSize": 56,
+    "scaleRatio": 1.35,
+    "lineHeightMultiplier": 1.6,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.84,
+    "contentBottomGap": 0,
+    "textAlign": "left",
+    "verticalAlign": "center",
+    "safeArea": {
+      "top": 40,
+      "right": 100,
+      "bottom": 40,
+      "left": 110
+    }
+  },
+  "theme": {
+    "bgColor": "#ffffff",
+    "textColor": "#1e1b4b",
+    "headingColor": "#1e1b4b",
+    "accentColor": "#6366f1",
+    "quoteColor": "#6366f1",
+    "captionColor": "#77758f",
+    "watermarkColor": "#77758f",
+    "cardBg": "#f4f4fc",
+    "borderSubtle": "#e5e5f1"
+  },
+  "typography": {
+    "headingFont": "PingFang SC",
+    "bodyFont": "PingFang SC"
+  },
+  "footerText": "",
+  "watermarkText": "",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": false,
+    "showPageNumber": false,
+    "showFooter": false,
+    "showFooterDivider": false,
+    "showFooterText": false,
+    "showFillRatio": false
+  },
+  "slot": "article_cover",
+  "images": [
+    {
+      "src": "https://img.nezus.cn/nezus/a41666a0-4588-493a-9ce5-3d34fcf5dd3f/typeset-studio/assets/20261015_765e86c9375a_35cd1f5d5cc9a31d4372d6bb9f4db393be95dae680edc0f2edc34f05e376769b.png",
+      "alt": "logo-512.png",
+      "caption": "",
+      "x": 1750,
+      "y": 260,
+      "width": 397,
+      "height": 397,
+      "captionHeight": 36,
+      "layoutPreset": "custom",
+      "id": "img_1792044572627_5z0t",
+      "repeatEveryPage": false,
+      "isAbsolute": true,
+      "zIndex": 15,
+      "rotate": 0,
+      "opacity": 1
+    }
+  ],
+  "canvasStyle": {
+    "fill": {
+      "type": "linear",
+      "angle": 222,
+      "stops": [
+        {
+          "color": "#ffffff",
+          "offset": 0
+        },
+        {
+          "color": "#f5f5fd",
+          "offset": 100
+        }
+      ]
+    },
+    "pattern": {
+      "pattern": "none",
+      "color": "#6366f1",
+      "opacity": 0.12,
+      "size": 56
+    },
+    "border": {
+      "style": "corners",
+      "color": "#6366f1",
+      "endColor": "#6366f1",
+      "width": 3,
+      "inset": 48,
+      "radius": 0,
+      "opacity": 0.42
+    }
+  },
+  "id": "tpl_1792044746499_swf5i"
+}

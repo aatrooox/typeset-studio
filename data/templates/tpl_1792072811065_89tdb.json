@@ -1,0 +1,100 @@
+{
+  "name": "文章封面-适配myno-新",
+  "aspectRatio": "wechat-cover-2.35",
+  "algorithm": {
+    "baseFontSize": 56,
+    "scaleRatio": 1.35,
+    "lineHeightMultiplier": 1.6,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.84,
+    "contentBottomGap": 0,
+    "textAlign": "left",
+    "verticalAlign": "center",
+    "safeArea": {
+      "top": 40,
+      "right": 1000,
+      "bottom": 40,
+      "left": 100
+    }
+  },
+  "theme": {
+    "bgColor": "#ffffff",
+    "textColor": "#1e1b4b",
+    "headingColor": "#1e1b4b",
+    "accentColor": "#6366f1",
+    "quoteColor": "#6366f1",
+    "captionColor": "#77758f",
+    "watermarkColor": "#77758f",
+    "cardBg": "#f4f4fc",
+    "borderSubtle": "#e5e5f1"
+  },
+  "typography": {
+    "headingFont": "PingFang SC",
+    "bodyFont": "PingFang SC"
+  },
+  "footerText": "",
+  "watermarkText": "",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": false,
+    "showPageNumber": false,
+    "showFooter": false,
+    "showFooterDivider": false,
+    "showFooterText": false,
+    "showFillRatio": false
+  },
+  "slot": "article_cover",
+  "images": [
+    {
+      "src": "https://img.nezus.cn/nezus/a41666a0-4588-493a-9ce5-3d34fcf5dd3f/typeset-studio/assets/20261015_11a5c176223d_b86453ce8488fbad69c4c4838354d3fd25a8bb0708a9981ba5983bf939dd0098.png",
+      "alt": "logo-512.png",
+      "caption": "",
+      "x": 2550,
+      "y": 160,
+      "width": 600,
+      "height": 600,
+      "captionHeight": 36,
+      "layoutPreset": "custom",
+      "id": "img_1792072248323_kyps",
+      "isAbsolute": true,
+      "zIndex": 0,
+      "rotate": 0,
+      "opacity": 1,
+      "repeatEveryPage": false,
+      "templateAssetKey": "asset_img_1792072248323_kyps",
+      "borderRadius": 52
+    }
+  ],
+  "canvasStyle": {
+    "fill": {
+      "type": "linear",
+      "angle": 222,
+      "stops": [
+        {
+          "color": "#ffffff",
+          "offset": 0
+        },
+        {
+          "color": "#f5f5fd",
+          "offset": 100
+        }
+      ]
+    },
+    "pattern": {
+      "pattern": "none",
+      "color": "#6366f1",
+      "opacity": 0.12,
+      "size": 56
+    },
+    "border": {
+      "style": "corners",
+      "color": "#6366f1",
+      "endColor": "#6366f1",
+      "width": 3,
+      "inset": 48,
+      "radius": 0,
+      "opacity": 0.42
+    }
+  },
+  "id": "tpl_1792072811065_89tdb"
+}

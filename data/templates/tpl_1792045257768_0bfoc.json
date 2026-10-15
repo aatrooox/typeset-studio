@@ -1,0 +1,80 @@
+{
+  "name": "贴图-封面-myno",
+  "aspectRatio": "longform-3-4",
+  "algorithm": {
+    "baseFontSize": 40,
+    "scaleRatio": 1.22,
+    "lineHeightMultiplier": 1.6,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.84,
+    "contentBottomGap": 20,
+    "textAlign": "left",
+    "verticalAlign": "top",
+    "safeArea": {
+      "top": 144,
+      "right": 120,
+      "bottom": 126,
+      "left": 120
+    }
+  },
+  "theme": {
+    "bgColor": "#fbfbff",
+    "textColor": "#1e1b4b",
+    "headingColor": "#1e1b4b",
+    "accentColor": "#6366f1",
+    "quoteColor": "#6366f1",
+    "captionColor": "#77758f",
+    "watermarkColor": "#77758f",
+    "cardBg": "#f4f4fc",
+    "borderSubtle": "#e5e5f1"
+  },
+  "typography": {
+    "headingFont": "PingFang SC",
+    "bodyFont": "PingFang SC"
+  },
+  "footerText": "",
+  "watermarkText": "",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": false,
+    "showPageNumber": false,
+    "showFooter": false,
+    "showFooterDivider": false,
+    "showFooterText": false,
+    "showFillRatio": false
+  },
+  "slot": "newspic_cover",
+  "images": [],
+  "canvasStyle": {
+    "fill": {
+      "type": "linear",
+      "angle": 90,
+      "stops": [
+        {
+          "color": "#ffffff",
+          "offset": 0
+        },
+        {
+          "color": "#f5f5fd",
+          "offset": 100
+        }
+      ]
+    },
+    "pattern": {
+      "pattern": "none",
+      "color": "#6366f1",
+      "opacity": 0.12,
+      "size": 56
+    },
+    "border": {
+      "style": "corners",
+      "color": "#6366f1",
+      "endColor": "#6366f1",
+      "width": 3,
+      "inset": 48,
+      "radius": 0,
+      "opacity": 0.42
+    }
+  },
+  "id": "tpl_1792045257768_0bfoc"
+}
