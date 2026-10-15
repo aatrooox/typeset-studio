@@ -70,6 +70,7 @@ export interface FlowImage {
   rotate?: number; // Rotation in degrees (e.g. -15 to 45)
   opacity?: number; // Opacity (0.1 to 1.0)
   borderRadius?: number; // Border radius in px (default 12)
+  fit?: "cover"; // 固定方图可按中心裁切，缺省沿用既有拉伸行为。
 }
 
 export interface FlowLineFragment {

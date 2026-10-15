@@ -271,7 +271,15 @@ export async function drawPageToContext(
       ctx.clip();
 
       if (loadedImg) {
-        ctx.drawImage(loadedImg, -w / 2, -h / 2, w, h);
+        if (img.fit === "cover") {
+          const sourceWidth = loadedImg.naturalWidth || loadedImg.width;
+          const sourceHeight = loadedImg.naturalHeight || loadedImg.height;
+          if (!(sourceWidth > 0 && sourceHeight > 0)) throw new Error("Invalid cover image dimensions");
+          const scale = Math.max(w / sourceWidth, h / sourceHeight);
+          const cropWidth = w / scale;
+          const cropHeight = h / scale;
+          ctx.drawImage(loadedImg, (sourceWidth - cropWidth) / 2, (sourceHeight - cropHeight) / 2, cropWidth, cropHeight, -w / 2, -h / 2, w, h);
+        } else ctx.drawImage(loadedImg, -w / 2, -h / 2, w, h);
       } else {
         ctx.fillStyle = theme.cardBg || "#222222";
         ctx.fillRect(-w / 2, -h / 2, w, h);

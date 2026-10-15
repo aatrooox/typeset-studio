@@ -33,6 +33,26 @@
 
 独立服务支持 [Docker 构建与持久化运行](./docs/docker.md)，镜像使用 Bun 1.3.14 和系统中文字体，默认仅映射宿主机回环端口。Pipeline 的本地 npm 插件模式无需另启此容器。
 
+## 有限文章封面接口（0.3.0）
+
+新宿主使用浏览器安全的 `@akairos/typeset-studio/cover` 和 `@akairos/typeset-studio/editor`，无需引入独立服务或管理员 key。`CoverControls` 是受控 React 组件，仅接收 `value`、`onChange` 和可选 `disabled`；不上传文件、不请求后端、不在浏览器测量字体。宿主负责命名保存、素材所有权和权威 PNG 预览。
+
+```ts
+import {
+  createArticleCoverConfig, validateArticleCoverControls,
+  ARTICLE_COVER_FONT, ARTICLE_COVER_IMAGE_KEY,
+} from "@akairos/typeset-studio/cover";
+import { CoverControls } from "@akairos/typeset-studio/editor";
+```
+
+有限控件为 `backgroundColor`／`titleColor`（六位 hex）、`fontSize`（80–200 整数）、`textAlign`（left／center／right）和 `safePadding`（60–200 整数）。未知字段、字体、路径和 URL 被拒绝。工厂调用 `createArticleCoverConfig({ id, name, controls, assetId })`，两个 ID 都为 UUID；返回完整规范配置，保留 `wechat-cover-2.35` ID，画布 3350×1000、左 2350 标题、右 1000 方图。图片 `asset:<id>` 只作身份占位，必须由可信后端通过 `applyTemplateImages([], config.images, { [ARTICLE_COVER_IMAGE_KEY]: imagePath })` 映射已经验证的持久素材。图片中心裁切、不拉伸；不开放自由布局。标题不自动截断或缩字，宿主必须以 `maxPages: 1` 排版，过长时明确失败。
+
+仅服务端调用的 `@akairos/typeset-studio/server-font` 提供同步 `registerArticleCoverFont({ path })`。它要求可信绝对路径，校验固定字体字节后注册 `Publishing Cover` 别名并清测量缓存；缺失、hash 错误或注册失败都抛错。字体身份为 `publishing-noto-cjk-regular-v1`，来自 Debian `fonts-noto-cjk=1:20240730+repack1-1` 的 `NotoSansCJK-Regular.ttc`，SHA256 `b76b0433203017ca80401b2ee0dd69350349871c4b19d504c34dbdd80541690a`。npm 不携带字体；宿主部署需固定包版本、保留字体许可证并保存受控恢复副本。客户端快照只记录字体 id/hash，不能提交路径。
+
+可信 PNG 调用顺序：注册字体 → 工厂配置 → 解析素材占位 → `runTypeset({ markdown, config, images, maxPages: 1 })` → `renderPageToPng(...)`。原 root API 仅供服务端使用，`/cover` 和 `/editor` 没有原生 Canvas 或 Node 依赖。Pipeline 插件在实际渲染子进程中通过受信环境 `TYPESET_ARTICLE_COVER_FONT_PATH` 注册工厂配置的字体，不能只在 Worker 父进程注册；旧模板和 standalone 原路径不受影响。
+
+本次定向检查入口为 `src/core/article-cover.test.ts` 和 `src/server-font.test.ts`；后者的真实 PNG 测试需显式设置 `TYPESET_ARTICLE_COVER_FONT_PATH` 为受控字体文件，否则该项跳过。开发只构建／静态检查，真实字体、PNG、HTTP／插件和消费方浏览器检查由主控执行并区分留证。
+
 ## 📖 定位与核心哲学
 
 在内容自动化分发、微信公众号文章与小红书图文制作中，传统的卡片出图方案普遍依赖 **Chrome Headless (Puppeteer / Playwright)**。为了获取最佳排版效果，往往需要在浏览器实例中多次反复渲染、测量高度、试探字号并进行 CDP 通信截屏。这种方式**速度缓慢（单次耗时数秒）、内存占用高、排版结果难以量化微调**。

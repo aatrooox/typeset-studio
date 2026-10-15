@@ -266,7 +266,7 @@ async function renderLocalBatch(
 
 export const typesetStudioAdapter: ImageRenderPlugin = {
   name: "typeset-studio",
-  version: "0.2.8",
+  version: "0.3.0",
 
   async doctor(): Promise<PipelinePluginDoctorCheck[]> {
     const checks: PipelinePluginDoctorCheck[] = [];

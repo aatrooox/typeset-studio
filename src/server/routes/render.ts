@@ -8,6 +8,8 @@ import {
   getDefaultTemplateId,
   getSlotDefaultTemplateId,
 } from "./templates";
+import { ARTICLE_COVER_FONT } from "../../core/article-cover";
+import { registerArticleCoverFont } from "../../server-font";
 
 export const renderRouter = new Hono();
 renderRouter.onError((error, c) => {
@@ -138,6 +140,13 @@ export function resolveTypesetResult(body: RenderRequestBody): {
   };
 
   const resolvedImages = applyTemplateImages(body.images || [], effectiveConfig.images, body.templateImageOverrides);
+
+  // 插件在独立子进程渲染，字体必须在实际排版进程中校验并注册。
+  if (effectiveConfig.typography.headingFont === ARTICLE_COVER_FONT.family || effectiveConfig.typography.bodyFont === ARTICLE_COVER_FONT.family) {
+    const path = process.env.TYPESET_ARTICLE_COVER_FONT_PATH;
+    if (!path) throw new Error("Article cover font path is not configured for this renderer");
+    registerArticleCoverFont({ path });
+  }
 
   // 封面主题先使用目标字号，单页放不下时缩到契约允许的最小字号。
   let result: TypesetResult;

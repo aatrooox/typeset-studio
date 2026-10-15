@@ -1,6 +1,6 @@
 {
   "name": "@akairos/typeset-studio",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "description": "Algorithmic typesetting studio & zzhub-pipeline image renderer plugin",
   "publishConfig": {
     "access": "public"
@@ -16,6 +16,18 @@
   "module": "./dist/lib/index.js",
   "types": "./src/index.ts",
   "exports": {
+    "./cover": {
+      "types": "./src/cover.ts",
+      "import": "./dist/cover/cover.js"
+    },
+    "./editor": {
+      "types": "./src/web/editor.ts",
+      "import": "./dist/editor/editor.js"
+    },
+    "./server-font": {
+      "types": "./src/server-font.ts",
+      "import": "./dist/lib/server-font.js"
+    },
     ".": {
       "import": "./dist/lib/index.js",
       "types": "./src/index.ts",
@@ -31,6 +43,8 @@
     "dist/assets",
     "dist/index.html",
     "dist/lib",
+    "dist/editor",
+    "dist/cover",
     "src",
     "public/fonts/README.md",
     "public/fonts/fonts.json",
@@ -41,7 +55,7 @@
     "dev:server": "bun --watch src/server/index.ts",
     "dev:all": "bun --watch src/server/index.ts & vite",
     "build": "vite build && bun run build:lib",
-    "build:lib": "rm -rf dist/lib && bun build src/index.ts src/adapter.ts --outdir dist/lib --target node --splitting --external @napi-rs/canvas",
+    "build:lib": "rm -rf dist/lib dist/editor dist/cover && bun build src/index.ts src/adapter.ts src/server-font.ts --outdir dist/lib --target node --splitting --external @napi-rs/canvas && bun build src/cover.ts --outdir dist/cover --target browser && bun build src/web/editor.ts --outdir dist/editor --target browser --production --external react --external react/jsx-runtime --external react/jsx-dev-runtime",
     "build:watch": "vite build --watch",
     "preview": "vite preview",
     "server": "bun run src/server/index.ts",

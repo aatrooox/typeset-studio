@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 (2026-10-16)
+
+- Add browser-safe article-cover controls and a canonical 3350 x 1000 template factory with a fixed left title area and right square image.
+- Register a trusted Noto CJK font by byte hash before server-side cover measurement, without silently falling back to system fonts.
+- Support centered cover-fit template images while retaining existing default image sizing, standalone Studio and adapter entry points.
+
 ## 0.2.8 (2026-10-16)
 
 - Add a standalone Docker distribution with persistent templates, explicit administrator credentials and bundled system Chinese fonts.
