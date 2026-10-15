@@ -1,0 +1,26 @@
+# 只发送构建所需源码，不发送本机运行数据、凭据、依赖和字体文件。
+**
+!package.json
+!bun.lock
+!index.html
+!vite.config.ts
+!tsconfig.json
+!postcss.config.js
+!tailwind.config.js
+!src/
+!src/**
+!public/
+!public/fonts/
+!public/fonts/README.md
+!public/fonts/fonts.json
+**/node_modules
+**/.env
+**/.env.*
+**/secrets
+**/*.pem
+**/*.key
+**/*.test.ts
+# 目录白名单会包含子文件，末尾再次排除本机字体二进制。
+**/*.[tT][tT][fF]
+**/*.[oO][tT][fF]
+**/*.[wW][oO][fF][fF]*

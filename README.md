@@ -31,6 +31,8 @@
 
 本包直接使用 `@chenglou/pretext` 和 `@napi-rs/canvas` 排版与出图；React/Vite 提供交互工作台，Hono/Bun 提供独立 HTTP 服务。自有程序也可直接调用包 API，无需 Pipeline 或任何私有应用。仅渲染 PNG 不需要 Chrome；Pipeline 的微信正文 HTML 导出仍需要浏览器。
 
+独立服务支持 [Docker 构建与持久化运行](./docs/docker.md)，镜像使用 Bun 1.3.14 和系统中文字体，默认仅映射宿主机回环端口。Pipeline 的本地 npm 插件模式无需另启此容器。
+
 ## 📖 定位与核心哲学
 
 在内容自动化分发、微信公众号文章与小红书图文制作中，传统的卡片出图方案普遍依赖 **Chrome Headless (Puppeteer / Playwright)**。为了获取最佳排版效果，往往需要在浏览器实例中多次反复渲染、测量高度、试探字号并进行 CDP 通信截屏。这种方式**速度缓慢（单次耗时数秒）、内存占用高、排版结果难以量化微调**。
