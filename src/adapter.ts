@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import type { FlowImage, PipelineCoverTheme } from "./core/types";
 import type { RenderRequestBody } from "./server/routes/render";
+import { normalizeArticleCoverTitle } from "./core/article-cover";
 
 // ── Typeset Studio & zzhub-pipeline compatible types ──────────────
 
@@ -266,7 +267,7 @@ async function renderLocalBatch(
 
 export const typesetStudioAdapter: ImageRenderPlugin = {
   name: "typeset-studio",
-  version: "0.3.0",
+  version: "0.3.1",
 
   async doctor(): Promise<PipelinePluginDoctorCheck[]> {
     const checks: PipelinePluginDoctorCheck[] = [];
@@ -353,7 +354,9 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
     // pipeline 的模式标记只选择分页方式，具体模板名才参与模板解析。
     const template = ["wechat-cover-split", "poster-3-4", "longform-3-4"].includes(input.template || "") ? undefined : input.template;
     input.onProgress?.({ stage: "typeset", message: "开始排版", route, account });
-    const title = cleanTitle(input.title || state.metadata?.title || "");
+    const rawTitle = input.title || state.metadata?.title || "";
+    const title = process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT === "1" ? normalizeArticleCoverTitle(rawTitle) : cleanTitle(rawTitle);
+    if (process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT === "1" && !title) throw new RangeError("Article cover title is empty after normalization");
     const common: RenderRequestBody = {
       account,
       title,

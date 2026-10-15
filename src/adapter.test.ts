@@ -2,6 +2,47 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { typesetStudioAdapter, type ImageRenderInput } from "./adapter";
+import { normalizeArticleCoverTitle } from "./cover";
+
+it("uses preview title normalization only for trusted cover snapshots and rejects empty normalized titles", async () => {
+  const { mkdtemp, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const directory = await mkdtemp(join(tmpdir(), "typeset-cover-title-"));
+  const previousUrl = process.env.TYPESET_STUDIO_URL;
+  const previousSnapshot = process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT;
+  const requests: any[] = [];
+  // 只替换远程传输边界，读取实际 adapter 构造的标题，不能冒充正式渲染结果。
+  const server = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: async request => {
+    requests.push(await request.json());
+    return Response.json({ ok: true, pages: [{ pageNumber: 1, dataUrl: "data:image/png;base64,", bodyImageCount: 0, bodyImageSources: [], bodyImageIds: [] }] });
+  } });
+  const render = (title: string) => typesetStudioAdapter.render({
+    title, route: "wechat-article", bodyText: "", outputDir: directory, state: { route: {} },
+  });
+  try {
+    process.env.TYPESET_STUDIO_URL = server.url.toString();
+    process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT = "1";
+    for (const raw of ["AI", "#AI", "  #AI", "## 标题", "# #AI", "正文 #尾"]) {
+      await render(raw);
+      const title = normalizeArticleCoverTitle(raw);
+      expect(requests.at(-1).title).toBe(title);
+      expect(requests.at(-1).markdown).toBe(`# ${title}`);
+    }
+    const accepted = requests.length;
+    for (const raw of ["", " \t ", " ### "]) await expect(render(raw)).rejects.toThrow("title is empty after normalization");
+    expect(requests.length).toBe(accepted);
+    delete process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT;
+    await render("  #AI");
+    expect(requests.at(-1).markdown).toBe("# #AI");
+    await render("");
+    expect(requests.at(-1).markdown).toBe("# 未命名文章");
+  } finally {
+    if (previousUrl === undefined) delete process.env.TYPESET_STUDIO_URL; else process.env.TYPESET_STUDIO_URL = previousUrl;
+    if (previousSnapshot === undefined) delete process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT; else process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT = previousSnapshot;
+    server.stop(true);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 describe("Typeset Studio — zzhub-pipeline ImageRenderPlugin Adapter", () => {
   const tempTestDir = join(process.cwd(), "tmp", `test-adapter-${Date.now()}`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ARTICLE_COVER_FONT, ARTICLE_COVER_IMAGE_KEY, createArticleCoverConfig, validateArticleCoverControls } from "./article-cover";
+import { ARTICLE_COVER_FONT, ARTICLE_COVER_IMAGE_KEY, createArticleCoverConfig, normalizeArticleCoverTitle, validateArticleCoverControls } from "./article-cover";
 import { applyTemplateImages } from "./template";
 import { drawPageToContext } from "./canvas-draw";
 import { getCanvasSpec } from "./geometry";
@@ -9,6 +9,14 @@ const assetId = "87654321-4321-4321-8321-cba987654321";
 const controls = { backgroundColor: "#F1F8FF", titleColor: "#123ABC", fontSize: 120, textAlign: "center", safePadding: 120 };
 
 describe("finite article-cover contract", () => {
+  it.each([
+    ["AI", "AI"], ["#AI", "AI"], ["  #AI", "AI"], ["## 标题", "标题"],
+    ["# #AI", "AI"], ["正文 #尾", "正文 #尾"], [" \t ", ""], [" ### ", ""],
+  ])("normalizes cover title %j once and remains idempotent", (raw, expected) => {
+    expect(normalizeArticleCoverTitle(raw)).toBe(expected);
+    expect(normalizeArticleCoverTitle(normalizeArticleCoverTitle(raw))).toBe(expected);
+  });
+
   it("normalizes finite controls and rejects paths, extra schema and invalid ranges", () => {
     expect(validateArticleCoverControls(controls)).toMatchObject({ backgroundColor: "#f1f8ff", titleColor: "#123abc" });
     for (const input of [{ ...controls, fontSize: 79 }, { ...controls, fontSize: 201 }, { ...controls, safePadding: 59 }, { ...controls, safePadding: 201 }, { ...controls, fontSize: 80.5 }, { ...controls, fontPath: "/private/font" }, { ...controls, backgroundColor: "url(https://invalid)" }, { ...controls, schemaVersion: 99 }]) {

@@ -39,7 +39,7 @@
 
 ```ts
 import {
-  createArticleCoverConfig, validateArticleCoverControls,
+  createArticleCoverConfig, normalizeArticleCoverTitle, validateArticleCoverControls,
   ARTICLE_COVER_FONT, ARTICLE_COVER_IMAGE_KEY,
 } from "@akairos/typeset-studio/cover";
 import { CoverControls } from "@akairos/typeset-studio/editor";
@@ -49,7 +49,7 @@ import { CoverControls } from "@akairos/typeset-studio/editor";
 
 仅服务端调用的 `@akairos/typeset-studio/server-font` 提供同步 `registerArticleCoverFont({ path })`。它要求可信绝对路径，校验固定字体字节后注册 `Publishing Cover` 别名并清测量缓存；缺失、hash 错误或注册失败都抛错。字体身份为 `publishing-noto-cjk-regular-v1`，来自 Debian `fonts-noto-cjk=1:20240730+repack1-1` 的 `NotoSansCJK-Regular.ttc`，SHA256 `b76b0433203017ca80401b2ee0dd69350349871c4b19d504c34dbdd80541690a`。npm 不携带字体；宿主部署需固定包版本、保留字体许可证并保存受控恢复副本。客户端快照只记录字体 id/hash，不能提交路径。
 
-可信 PNG 调用顺序：注册字体 → 工厂配置 → 解析素材占位 → `runTypeset({ markdown, config, images, maxPages: 1 })` → `renderPageToPng(...)`。原 root API 仅供服务端使用，`/cover` 和 `/editor` 没有原生 Canvas 或 Node 依赖。Pipeline 插件在实际渲染子进程中通过受信环境 `TYPESET_ARTICLE_COVER_FONT_PATH` 注册工厂配置的字体，不能只在 Worker 父进程注册；旧模板和 standalone 原路径不受影响。
+可信 PNG 调用顺序：注册字体 → 工厂配置 → 解析素材占位 → `runTypeset({ markdown, config, images, maxPages: 1 })` → `renderPageToPng(...)`。从 0.3.1 起，宿主先用 `normalizeArticleCoverTitle(title)` 清理首尾空白和前导 `#` 组，拒绝清理后为空的标题，再构造标题 Markdown；重复调用结果不变，中间及尾部的 `#` 保留。Pipeline 仅在可信 `ZZHUB_PIPELINE_COVER_SNAPSHOT=1` 分支使用同一规则，旧调用保留原标题行为。原 root API 仅供服务端使用，`/cover` 和 `/editor` 没有原生 Canvas 或 Node 依赖。Pipeline 插件在实际渲染子进程中通过受信环境 `TYPESET_ARTICLE_COVER_FONT_PATH` 注册工厂配置的字体，不能只在 Worker 父进程注册；旧模板和 standalone 原路径不受影响。
 
 本次定向检查入口为 `src/core/article-cover.test.ts` 和 `src/server-font.test.ts`；后者的真实 PNG 测试需显式设置 `TYPESET_ARTICLE_COVER_FONT_PATH` 为受控字体文件，否则该项跳过。开发只构建／静态检查，真实字体、PNG、HTTP／插件和消费方浏览器检查由主控执行并区分留证。
 

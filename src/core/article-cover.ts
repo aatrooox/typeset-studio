@@ -19,6 +19,11 @@ export const DEFAULT_ARTICLE_COVER_CONTROLS: Readonly<ArticleCoverControls> = Ob
   textAlign: "left", safePadding: 120,
 });
 
+/** 预览与快照渲染共用标题清理，重复调用不会继续改变标题。 */
+export function normalizeArticleCoverTitle(raw: string): string {
+  return raw.trim().replace(/^(?:#+\s*)+/, "").trim();
+}
+
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new RangeError("Invalid article cover object");
   return value as Record<string, unknown>;

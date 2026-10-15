@@ -2,6 +2,7 @@ export {
   ARTICLE_COVER_FONT,
   ARTICLE_COVER_IMAGE_KEY,
   DEFAULT_ARTICLE_COVER_CONTROLS,
+  normalizeArticleCoverTitle,
   validateArticleCoverControls,
   createArticleCoverConfig,
   type ArticleCoverControls,

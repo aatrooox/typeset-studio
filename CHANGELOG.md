@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 (2026-10-16)
+
+- Share idempotent cover-title normalization between host previews and trusted Pipeline cover snapshots while retaining the existing adapter title behavior for other callers.
+- Reject snapshot titles that become empty after normalization instead of rendering the fallback example.
+
 ## 0.3.0 (2026-10-16)
 
 - Add browser-safe article-cover controls and a canonical 3350 x 1000 template factory with a fixed left title area and right square image.
