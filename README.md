@@ -20,13 +20,24 @@
 
 </div>
 
+## 生态与使用者
+
+| 项目 | 与 Typeset Studio 的关系 |
+| --- | --- |
+| [zzhub-pipeline](https://github.com/k7airos/zzhub-pipeline) · [`@akairos/pipeline`](https://www.npmjs.com/package/@akairos/pipeline) | 当前图片插件消费方，通过 `@akairos/typeset-studio/adapter` 生成文章封面和贴图页面；负责状态机、素材上传与草稿发布 |
+| [myno](https://github.com/k7airos/myno) | 配套正文编辑与排版工作台；生成可复制的微信 HTML 和样式 JSON，与本包的 PNG 渲染职责互补，互不依赖 |
+| [Obsidian 微信发布插件](https://github.com/k7airos/obsidian-wechat-publish) | 通过本机 Pipeline 间接使用已配置的图片渲染器，不直接依赖本包 |
+| [Kairos Skills](https://github.com/k7airos/kairos-skills) | 指导 Agent 选择模板、准备正文与素材，再调用 Pipeline 渲染 |
+
+本包直接使用 `@chenglou/pretext` 和 `@napi-rs/canvas` 排版与出图；React/Vite 提供交互工作台，Hono/Bun 提供独立 HTTP 服务。自有程序也可直接调用包 API，无需 Pipeline 或任何私有应用。仅渲染 PNG 不需要 Chrome；Pipeline 的微信正文 HTML 导出仍需要浏览器。
+
 ## 📖 定位与核心哲学
 
 在内容自动化分发、微信公众号文章与小红书图文制作中，传统的卡片出图方案普遍依赖 **Chrome Headless (Puppeteer / Playwright)**。为了获取最佳排版效果，往往需要在浏览器实例中多次反复渲染、测量高度、试探字号并进行 CDP 通信截屏。这种方式**速度缓慢（单次耗时数秒）、内存占用高、排版结果难以量化微调**。
 
 **Typeset Studio** 采取了完全不同的技术路线：**以确定性纯数学几何排版与服务端原生渲染为核心**。
 
-- **⚡ 告别试探性重绘与 Chrome 依赖**：底层依托 `@chenglou/pretext`（纯数学文本分词测距）与 `@napi-rs/canvas`（基于 Rust Skia 的原生图形绘制引擎），彻底脱离无头浏览器。从计算到渲染直接输出高清 PNG，具备**毫秒级出图性能**、**系统原生字体支持**与**像素级确定性**。
+- **原生 PNG 渲染**：底层依托 `@chenglou/pretext` 与 `@napi-rs/canvas`，不使用无头浏览器截图。字体和素材来自渲染机器；性能和最终外观取决于文本长度、页面数量、素材与字体，不承诺跨机器像素一致。
 - **🧩 双模态运行形态**：
   1. **独立可视化排版工作台 (Standalone Visual Studio)**：具备类 Vercel 极简黑白美学的 Web 设计器，支持多图瀑布流全景平铺、单图聚焦微调、四大标准出版比例切换、模板持久化与一键直接服务端渲染高清下载。
   2. **自动化发布流水线插件 (Pipeline Image Renderer Plugin)**：作为标准图像渲染插件，可无缝插拔接入 `zzhub-pipeline` 或任意 CI/CD 内容分发系统，直接通过原生 Canvas 生成图片，彻底替代笨重的 Chrome 截屏方案。
@@ -42,7 +53,7 @@
 - **通用正方形 (1:1)**：`1200 × 1200px`，适用于金句摘录、名言卡片、社媒方图。
 
 ### 2. 🌊 8 大流式排版预设与自由图层 (Absolute Layer)
-- **8 种流式避让算法**：自适应 (`auto`)、居左浮动 (`left`)、居右浮动 (`right`)、居中横幅 (`center`)、交错排版 (`staggered`)、角落软着陆 (`corner-soft`)、底部填满 (`fill`) 与自定义坐标 (`custom`)。
+- **8 种流式避让预设**：自适应 (`auto`)、居左浮动 (`mid-left`)、居右浮动 (`mid-right`)、居中横幅 (`center`)、交错排版 (`staggered`)、角落软着陆 (`corner-soft`)、填充 (`fill`) 与自定义坐标 (`custom`)。
 - **自由图层穿透**：一键将配图转为绝对定位自由图层，正文自动穿透排版流动，支持任意 `x/y`、宽高、`z-index`、旋转角度（`0~360°`）与透明度。
 
 ### 3. 🖼️ 多图瀑布流全景平铺与单图聚焦
@@ -60,7 +71,7 @@
   - `article_cover`（文章封面，默认 2.35:1）
   - `newspic_cover`（贴图封面，默认 3:4）
   - `newspic_content`（贴图内容，默认 3:4 多页）
-- **账号隔离与平滑回退**：不同公众号/发布账号独立配置各槽位的默认模板；未配置时平滑降级至系统内置预设，程序绝不崩溃中断。
+- **账号槽位与默认模板**：各账号可独立配置槽位；未配置时按全局默认和算法默认回退。显式选择不存在的模板、素材缺失或无法满足分页约束时会报错。
 - **数量不匹配交集算法**：模板配图数与文章实际配图数不一致时安全应用交集（如 1 对多仅覆盖第 1 张，其余保留用户参数；2 对 1 忽略超出项）。
 
 ---
@@ -68,8 +79,8 @@
 ## 🛠️ 运行环境与依赖要求
 
 ### 1. 核心运行时
-- **推荐运行环境**：[Bun](https://bun.sh/) `>= 1.2`（强烈推荐，启动仅需 5ms，原生支持 TypeScript 与 Watch 模式）
-- **兼容运行环境**：Node.js `>= 20.0` (搭配 `tsx` 或预编译)
+- **推荐运行环境**：[Bun](https://bun.sh/) `>= 1.2`，支持 TypeScript 与 Watch 模式
+- **Node.js 调用**：核心库与 npm 构建提供 Node 入口；独立 HTTP 服务使用 `hono/bun`，按下文使用 Bun 启动。
 
 ### 2. 底层关键依赖
 | 依赖包 | 版本 | 角色与用途 |
@@ -100,8 +111,11 @@ bun install
 单进程同时托管后端 API 与前端 Web 工作台：
 
 ```bash
+bun run build
 bun run server
 ```
+
+首次从源码启动或更新前端后，先构建 `dist/`；服务端托管的是构建后的工作台。
 
 服务启动后输出端口信息，管理员密钥保存在环境变量或 `.env` 中：
 ```text
@@ -149,9 +163,31 @@ npm install @akairos/typeset-studio
 
 源码联调也可将 `imageRenderer` 指向本项目的 `src/adapter.ts` 或构建后的 `dist/lib/adapter.js`。
 
-默认使用本地原生 Canvas。需要独立渲染服务时，在流水线进程设置 `TYPESET_STUDIO_URL` 和 `TYPESET_ADMIN_KEY`，适配器会传输本地图片并保存返回的 PNG。
+Pipeline 使用 npm 插件的本地原生 Canvas 方法，不需要另启 HTTP 服务，也不需要管理员密钥。建议通过对象配置指定包目录之外的持久化数据目录，并让独立编辑器使用同一目录：
 
-配置后执行 `zzp render --state ...` 或 `zzp run` 即可使用该插件。
+```json
+{
+  "plugins": {
+    "imageRenderer": {
+      "module": "@akairos/typeset-studio/adapter",
+      "options": { "dataDir": "/absolute/path/typeset-data" }
+    },
+    "markdownRenderer": { "module": "@akairos/myno/adapter", "options": {} }
+  }
+}
+```
+
+`markdownRenderer` 是可选的配套正文插件；只需要出图时不必启用。Pipeline 将 `options.dataDir` 传为插件子进程的 `TYPESET_DATA_DIR`，已有非空环境变量优先。Pipeline 会屏蔽适配器的远程服务地址和密钥，确保走本地 npm 执行。
+
+```bash
+# 在本仓库运行编辑器，与插件共享模板和 uploads
+TYPESET_DATA_DIR=/absolute/path/typeset-data bun run server
+# 在已有发布任务中渲染；下一步由 status 决定
+zzp status --state ./workflow-state.json --view agent
+zzp render --state ./workflow-state.json
+```
+
+没有 `zzp run` 命令。完整发布流程见 [Pipeline README](https://github.com/k7airos/zzhub-pipeline#readme)。本包不负责微信上传或草稿创建。
 
 ---
 
@@ -180,7 +216,7 @@ curl -X POST http://localhost:4890/api/render \
 ```
 
 ### 3. 服务端原生 Canvas 生成 PNG (`POST /api/render/png`)
-直接返回二进制 raw `image/png` 数据流，单次响应仅数十毫秒，0 浏览器内存开销：
+直接返回二进制 `image/png` 数据流，使用原生 Canvas 渲染：
 ```bash
 curl -X POST http://localhost:4890/api/render/png \
   -H "Content-Type: application/json" \
@@ -284,7 +320,7 @@ bun run build
 - `src/core/template.test.ts`：模板持久化、配图数量交集应用逻辑验证
 - `src/core/image-layout.test.ts`：流式排版预设坐标、Page 2 边界安全与陈旧坐标免疫验证
 - `src/server/routes/slots.test.ts`：三大默认模板槽位、账号配置隔离与回退容错验证
-- **当前状态**：`24 / 24` 单元测试通过率 100%。
+- 测试数量与结果以本次执行输出为准；此处不将历史统计作为当前验收结论。
 
 ---
 
@@ -296,7 +332,7 @@ bun run build
 
 业务 API（模板、上传、排版）均要求 `X-Admin-Key`。本机编辑器通过真实回环连接自动领取密钥；远程编辑器需在设置中填写密钥。密钥来自 `TYPESET_ADMIN_KEY` 或服务目录的 `.env`，跨域网页不能自动领取。反向代理应使用业务域名，并保留原始 Host。
 
-远程插件设置 `TYPESET_STUDIO_URL` 与 `TYPESET_ADMIN_KEY`。插件会传输本地图片字节；`/uploads/` 路径表示远程服务的上传文件。`TYPESET_DATA_DIR` 统一控制模板、默认配置和上传文件目录。
+仅直接使用本包适配器的远程模式时才设置 `TYPESET_STUDIO_URL` 与 `TYPESET_ADMIN_KEY`；Pipeline 调用会屏蔽这两个参数。远程模式传输任务本地图片字节，`/uploads/` 表示远端文件。`TYPESET_DATA_DIR` 统一控制模板、默认配置和上传文件目录。
 
 插件的模板选择顺序为：`studioTemplates.cover/content` → 旧调用中的具体 `template` 名称 → 当前账号的用途槽位默认模板。`wechat-cover-split`、`poster-3-4`、`longform-3-4` 只表示 pipeline 渲染模式，不作为 Studio 模板名查询。未知模板会报错。
 
@@ -351,7 +387,7 @@ templateImageOverrides: {
 },
 ```
 
-对应的 pipeline 命令（需使用支持这些参数的 pipeline 源码或本地安装）：
+对应的 Pipeline 命令（当前 npm 0.19.0 已支持）：
 
 ```bash
 zzp render --state /absolute/path/workflow-state.json \
@@ -373,4 +409,4 @@ zzp render --state /absolute/path/workflow-state.json \
 
 模板只保存文件或 URL 引用，不嵌入、不自动打包迁移。`/uploads/...` 由实际渲染方的 `TYPESET_DATA_DIR` 解析，本地插件和编辑器应使用同一目录；远程模式使用服务端目录。模板中的绝对路径必须在渲染机器存在，HTTP URL 必须可访问。远程调用会传输任务替换中本地文件的字节，但不会复制原模板素材。缺失固定素材、未知替换标识或重复标识会明确报错，终止出图。
 
-固定素材和模板优先渲染已随 `@akairos/typeset-studio@0.2.5` 发布。正式 Pipeline 使用 npm 入口；本地源码入口仅用于联调未发布的改动。运行时模板和上传图片不打进 npm 包，应通过 Pipeline 运行时配置包同步。
+固定素材和模板优先渲染从 `@akairos/typeset-studio@0.2.5` 起提供，Pipeline 0.19.0 固定依赖 0.2.6。正式 Pipeline 使用 npm 入口；本地源码入口仅用于联调。运行时模板和上传图片不打进 npm 包，应通过 Pipeline 的 `typeset-assets-sync` 打包，或自行同步目录与素材；说明见 [运行时配置指南](https://github.com/k7airos/zzhub-pipeline/blob/main/docs/visual-studio-and-config-sync.md)。
