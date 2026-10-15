@@ -53,6 +53,14 @@ import { CoverControls } from "@akairos/typeset-studio/editor";
 
 本次定向检查入口为 `src/core/article-cover.test.ts` 和 `src/server-font.test.ts`；后者的真实 PNG 测试需显式设置 `TYPESET_ARTICLE_COVER_FONT_PATH` 为受控字体文件，否则该项跳过。开发只构建／静态检查，真实字体、PNG、HTTP／插件和消费方浏览器检查由主控执行并区分留证。
 
+## 可信服务端配置解析（0.4.0）
+
+`@akairos/typeset-studio/server-config` 仅供服务端使用，导出 `buildArticleCoverRequest(input: ImageRenderInput)`、`resolveTypesetConfig(request: TypesetConfigRequest)` 和组合调用 `resolveArticleCoverConfig(input: ImageRenderInput)`，以及这些函数的输入/输出类型。文章封面请求与 adapter 共用构造；显式模板、账号槽位、全局默认、内置回落和样式覆盖规则与实际 render 共用实现。
+
+解析结果含完整 `config`（`images` 已替换）、`source`（`explicit` / `slot-default` / `global-default` / `builtin`）、模板 id/name、slot 和 `resources: { key, src }[]`。资源 key 为 `images.N`、`coverTheme.background.image` 或 `coverTheme.decoration.image`，宿主按这些位置保存可信字节并替换路径。返回值独立复制，可冻结后使用；普通模板插图的随机内部 id 沿用原行为，宿主比较快照时自行规范身份。
+
+此接口不排版、不绘图、不下载素材、不注册字体，也不接受字体文件路径。模板和数据目录来自可信服务进程的 `TYPESET_DATA_DIR`，不能直接接受浏览器配置或路径。宿主负责资源白名单/字节校验、可信字体绑定和不可变快照，旧 render/adapter/standalone 保留原渲染行为。
+
 ## 📖 定位与核心哲学
 
 在内容自动化分发、微信公众号文章与小红书图文制作中，传统的卡片出图方案普遍依赖 **Chrome Headless (Puppeteer / Playwright)**。为了获取最佳排版效果，往往需要在浏览器实例中多次反复渲染、测量高度、试探字号并进行 CDP 通信截屏。这种方式**速度缓慢（单次耗时数秒）、内存占用高、排版结果难以量化微调**。

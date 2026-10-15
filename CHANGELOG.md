@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 (2026-10-16)
+
+- Add server-only effective configuration resolution with template provenance and resource references, without laying out or downloading content.
+- Share article-cover request construction and template selection with the existing adapter and renderer for immutable host snapshots.
+
 ## 0.3.1 (2026-10-16)
 
 - Share idempotent cover-title normalization between host previews and trusted Pipeline cover snapshots while retaining the existing adapter title behavior for other callers.

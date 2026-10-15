@@ -265,9 +265,83 @@ async function renderLocalBatch(
   return { assets, pageCount: outputs.length, pages };
 }
 
+function buildCommonRequest(input: ImageRenderInput) {
+  const { state } = input;
+  const account = state.route.account || "default";
+  const saved = state.intent?.newspic_render;
+  const pageSpecs = input.pageSpecs ?? saved?.page_specs?.map((spec) => ({
+    page: spec.page, imageMarkers: spec.image_markers, imageLayout: spec.image_layout, targetFillRatio: spec.target_fill_ratio,
+  }));
+  const visual = input.accountVisualParams || {};
+  const stateVisual = state.route.account_visual_params;
+  const footer = visual.footer ?? stateVisual?.footer;
+  const bg = visual.bg ?? stateVisual?.bg;
+  const highlight = visual.highlight ?? stateVisual?.highlight;
+  const fallbackIcon = visual.fallbackIcon ?? stateVisual?.fallback_icon;
+  // pipeline 的模式标记只选择分页方式，具体模板名才参与模板解析。
+  const template = ["wechat-cover-split", "poster-3-4", "longform-3-4"].includes(input.template || "") ? undefined : input.template;
+  const rawTitle = input.title || state.metadata?.title || "";
+  const title = process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT === "1" ? normalizeArticleCoverTitle(rawTitle) : cleanTitle(rawTitle);
+  if (process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT === "1" && !title) throw new RangeError("Article cover title is empty after normalization");
+  const common: RenderRequestBody = {
+    account,
+    title,
+    preserveTemplateStyle: true,
+    images: mapBodyImages(input.bodyImages, pageSpecs),
+    highlightWords: state.route.highlight_words || [],
+    config: {
+      ...(footer !== undefined ? { footerText: footer } : {}),
+      watermarkText: `@${account}`,
+      ...((bg || highlight) ? { theme: {
+        ...(bg ? { bgColor: bg } : {}), ...(highlight ? { accentColor: highlight } : {}),
+      } } : {}),
+    },
+  };
+  return { common, template, footer, fallbackIcon, saved, pageSpecs, title, account };
+}
+
+function buildCoverRequest(input: ImageRenderInput, request: ReturnType<typeof buildCommonRequest>): RenderRequestBody {
+  const { common, template, footer, fallbackIcon, title } = request;
+  const articleCover = input.route === "wechat-article";
+  const renderRoute = articleCover ? "wechat-article" : "wechat-newspic";
+  const coverTheme = input.coverTheme;
+  const coverConfig = { ...common.config, algorithm: { targetFillRatio: 1 } };
+  if (coverTheme) {
+    coverConfig.coverTheme = coverTheme;
+    if (footer) coverConfig.chrome = { showHeader: false, showFooter: true, showFooterDivider: false, showFooterText: true };
+    coverConfig.algorithm = { ...coverTheme.layout, targetFillRatio: 1 };
+    coverConfig.theme = {
+      bgColor: coverTheme.background.fill.type === "solid" ? coverTheme.background.fill.color : "transparent",
+      textColor: coverTheme.colors.text, headingColor: coverTheme.colors.text,
+      accentColor: coverTheme.colors.accent, quoteColor: coverTheme.colors.muted,
+      captionColor: coverTheme.colors.muted, watermarkColor: coverTheme.colors.muted,
+    };
+  }
+  const firstPageImages = (common.images || []).filter((image) => !image.pageIndex || image.pageIndex === 1)
+    .map((image) => ({ ...image, pageIndex: 1 }));
+  if (fallbackIcon) coverConfig.images = [{
+    id: "account_icon", src: fallbackIcon, alt: "账号标识", isAbsolute: true,
+    x: 0, y: 0, width: 48, height: 48, zIndex: 20, pageIndex: 1,
+    templateAssetKey: "account_icon",
+  }];
+  return {
+    ...common, config: coverConfig, images: firstPageImages,
+    template: input.studioTemplates?.cover || template,
+    templateImageOverrides: input.templateImageOverrides?.cover,
+    route: renderRoute, slot: articleCover ? "article_cover" : "newspic_cover",
+    kind: "cover", maxPages: 1, markdown: `# ${title}`,
+  };
+}
+
+/** 可信服务端冻结文章封面时复用 adapter 的实际请求构造。 */
+export function buildArticleCoverRequest(input: ImageRenderInput): RenderRequestBody {
+  if (input.route !== "wechat-article") throw new RangeError("Article cover request requires wechat-article route");
+  return buildCoverRequest(input, buildCommonRequest(input));
+}
+
 export const typesetStudioAdapter: ImageRenderPlugin = {
   name: "typeset-studio",
-  version: "0.3.1",
+  version: "0.4.0",
 
   async doctor(): Promise<PipelinePluginDoctorCheck[]> {
     const checks: PipelinePluginDoctorCheck[] = [];
@@ -340,37 +414,9 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
     if (route === "blog") return { assets: [], pageCount: 0, pages: [] };
 
     const REMOTE_STUDIO_URL = remoteStudioUrl();
-    const account = state.route.account || "default";
-    const saved = state.intent?.newspic_render;
-    const pageSpecs = input.pageSpecs ?? saved?.page_specs?.map((spec) => ({
-      page: spec.page, imageMarkers: spec.image_markers, imageLayout: spec.image_layout, targetFillRatio: spec.target_fill_ratio,
-    }));
-    const visual = input.accountVisualParams || {};
-    const stateVisual = state.route.account_visual_params;
-    const footer = visual.footer ?? stateVisual?.footer;
-    const bg = visual.bg ?? stateVisual?.bg;
-    const highlight = visual.highlight ?? stateVisual?.highlight;
-    const fallbackIcon = visual.fallbackIcon ?? stateVisual?.fallback_icon;
-    // pipeline 的模式标记只选择分页方式，具体模板名才参与模板解析。
-    const template = ["wechat-cover-split", "poster-3-4", "longform-3-4"].includes(input.template || "") ? undefined : input.template;
-    input.onProgress?.({ stage: "typeset", message: "开始排版", route, account });
-    const rawTitle = input.title || state.metadata?.title || "";
-    const title = process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT === "1" ? normalizeArticleCoverTitle(rawTitle) : cleanTitle(rawTitle);
-    if (process.env.ZZHUB_PIPELINE_COVER_SNAPSHOT === "1" && !title) throw new RangeError("Article cover title is empty after normalization");
-    const common: RenderRequestBody = {
-      account,
-      title,
-      preserveTemplateStyle: true,
-      images: mapBodyImages(input.bodyImages, pageSpecs),
-      highlightWords: state.route.highlight_words || [],
-      config: {
-        ...(footer !== undefined ? { footerText: footer } : {}),
-        watermarkText: `@${account}`,
-        ...((bg || highlight) ? { theme: {
-          ...(bg ? { bgColor: bg } : {}), ...(highlight ? { accentColor: highlight } : {}),
-        } } : {}),
-      },
-    };
+    input.onProgress?.({ stage: "typeset", message: "开始排版", route, account: state.route.account || "default" });
+    const request = buildCommonRequest(input);
+    const { common, template, saved, pageSpecs, title, account } = request;
     const articleCover = route === "wechat-article";
     const renderRoute = articleCover ? "wechat-article" : "wechat-newspic";
 
@@ -380,33 +426,7 @@ export const typesetStudioAdapter: ImageRenderPlugin = {
         ? renderRemoteBatch(REMOTE_STUDIO_URL, body, outputDir, renderRoute, kind)
         : renderLocalBatch(body, outputDir, renderRoute, kind);
 
-    const coverTheme = input.coverTheme;
-    const coverConfig = { ...common.config, algorithm: { targetFillRatio: 1 } };
-    if (coverTheme) {
-      coverConfig.coverTheme = coverTheme;
-      if (footer) coverConfig.chrome = { showHeader: false, showFooter: true, showFooterDivider: false, showFooterText: true };
-      coverConfig.algorithm = { ...coverTheme.layout, targetFillRatio: 1 };
-      coverConfig.theme = {
-        bgColor: coverTheme.background.fill.type === "solid" ? coverTheme.background.fill.color : "transparent",
-        textColor: coverTheme.colors.text, headingColor: coverTheme.colors.text,
-        accentColor: coverTheme.colors.accent, quoteColor: coverTheme.colors.muted,
-        captionColor: coverTheme.colors.muted, watermarkColor: coverTheme.colors.muted,
-      };
-    }
-    const firstPageImages = (common.images || []).filter((image) => !image.pageIndex || image.pageIndex === 1)
-      .map((image) => ({ ...image, pageIndex: 1 }));
-    if (fallbackIcon) coverConfig.images = [{
-      id: "account_icon", src: fallbackIcon, alt: "账号标识", isAbsolute: true,
-      x: 0, y: 0, width: 48, height: 48, zIndex: 20, pageIndex: 1,
-      templateAssetKey: "account_icon",
-    }];
-    const cover = await renderBatch({
-      ...common, config: coverConfig, images: firstPageImages,
-      template: input.studioTemplates?.cover || template,
-      templateImageOverrides: input.templateImageOverrides?.cover,
-      route: renderRoute, slot: articleCover ? "article_cover" : "newspic_cover",
-      kind: "cover", maxPages: 1, markdown: `# ${title}`,
-    }, "cover");
+    const cover = await renderBatch(buildCoverRequest(input, request), "cover");
     input.onProgress?.({ stage: "cover", message: "封面已生成", current: 1, total: 1, unit: "pages", route, account });
     const paginationMode = input.template === "longform-3-4"
       ? "multi"

@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
           <span className="hidden 2xl:inline">Typeset Studio</span>
         </div>
-        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden 2xl:inline">v0.3.1</span>
+        <span className="text-xs text-[#888888] dark:text-[#555555] font-mono hidden 2xl:inline">v0.4.0</span>
         <div title={templateName || "未命名模板"} className="flex min-w-0 items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#111111] border border-[#e5e5e5] dark:border-[#222222] text-[11px] text-emerald-600 dark:text-[#00e676]">
           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-[#00e676]" />
           <span aria-live="polite" className="max-w-40 truncate">{templateName || "未命名模板"}</span>

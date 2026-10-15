@@ -1,15 +1,10 @@
 import { Hono } from "hono";
-import { getDefaultConfig, runTypeset } from "../../core/engine";
+import { runTypeset } from "../../core/engine";
 import { renderPageToPng, renderTypesetResultToPngs } from "../../core/canvas-renderer";
-import { applyTemplateImages } from "../../core/template";
-import { FlowImage, TemplateSlot, TypesetConfig, TypesetResult } from "../../core/types";
-import {
-  findTemplateByKeyOrName,
-  getDefaultTemplateId,
-  getSlotDefaultTemplateId,
-} from "./templates";
+import { TemplateSlot, TypesetResult } from "../../core/types";
 import { ARTICLE_COVER_FONT } from "../../core/article-cover";
 import { registerArticleCoverFont } from "../../server-font";
+import { resolveTypesetRenderConfig, type TypesetConfigRequest } from "../config-resolver";
 
 export const renderRouter = new Hono();
 renderRouter.onError((error, c) => {
@@ -19,47 +14,16 @@ renderRouter.onError((error, c) => {
   return c.json({ ok: false, error: "Render failed" }, 500);
 });
 
-export interface RenderRequestBody {
+export interface RenderRequestBody extends TypesetConfigRequest {
   result?: TypesetResult;
   pageNumber?: number;
-  templateId?: string;
-  templateKey?: string;
-  template?: string;
-  slot?: TemplateSlot;
-  route?: string;
-  kind?: string;
-  account?: string;
   title?: string;
   markdown?: string;
   text?: string;
-  images?: FlowImage[];
   highlightWords?: string[];
-  config?: Omit<Partial<TypesetConfig>, "algorithm" | "theme" | "typography"> & {
-    algorithm?: Partial<TypesetConfig["algorithm"]>;
-    theme?: Partial<TypesetConfig["theme"]>;
-    typography?: Partial<TypesetConfig["typography"]>;
-  };
   minPages?: number;
   maxPages?: number;
   pageFillRatios?: Record<number, number>;
-  templateImageOverrides?: Record<string, string>;
-  preserveTemplateStyle?: boolean;
-}
-
-function inferSlot(route?: string, kind?: string, aspectRatio?: string): TemplateSlot | undefined {
-  if (route === "wechat-article" || kind === "article_cover" || aspectRatio === "wechat-cover-2.35") {
-    return "article_cover";
-  }
-  if (route === "wechat-newspic") {
-    if (kind === "content" || kind === "pages") {
-      return "newspic_content";
-    }
-    return "newspic_cover";
-  }
-  if (kind === "cover") {
-    return "article_cover";
-  }
-  return undefined;
 }
 
 export function resolveTypesetResult(body: RenderRequestBody): {
@@ -86,60 +50,9 @@ export function resolveTypesetResult(body: RenderRequestBody): {
     markdown = "# 示例标题\n正文内容";
   }
 
-  // 1. Resolve template by explicit templateId / templateKey / template
-  const targetKey = body.templateId || body.templateKey || body.template;
-  let baseConfig: TypesetConfig | null = null;
-  if (targetKey) {
-    baseConfig = findTemplateByKeyOrName(targetKey);
-    if (!baseConfig) throw new RangeError(`Template '${targetKey}' not found`);
-  }
-
-  // 2. Resolve by slot and account
-  const resolvedSlot = body.slot || inferSlot(body.route, body.kind, body.config?.aspectRatio);
-  if (!baseConfig && resolvedSlot) {
-    const slotDefaultId = getSlotDefaultTemplateId(resolvedSlot, body.account || "default");
-    if (slotDefaultId) {
-      baseConfig = findTemplateByKeyOrName(slotDefaultId);
-    }
-  }
-
-  // 3. Fallback to global default if any
-  if (!baseConfig) {
-    const defaultId = getDefaultTemplateId();
-    if (defaultId) {
-      baseConfig = findTemplateByKeyOrName(defaultId);
-    }
-  }
-
-  // 4. Native algorithmic fallback if no templates exist
-  if (!baseConfig) {
-    const isCover = resolvedSlot === "article_cover" || body.route === "wechat-article";
-    baseConfig = getDefaultConfig(isCover ? "wechat-cover-2.35" : "longform-3-4");
-  }
-
-  // 插件保留模板样式；直接 API 调用仍允许显式覆盖配置。
-  const overrides = body.preserveTemplateStyle && baseConfig.id ? {} : body.config;
-
-  // Merge any config overrides
-  const effectiveConfig: TypesetConfig = {
-    ...baseConfig,
-    ...(overrides || {}),
-    algorithm: {
-      ...baseConfig.algorithm,
-      ...(overrides?.algorithm || {}),
-    },
-    theme: {
-      ...baseConfig.theme,
-      ...(overrides?.theme || {}),
-    },
-    typography: {
-      ...baseConfig.typography,
-      ...(overrides?.typography || {}),
-    },
-    chrome: { ...baseConfig.chrome, ...overrides?.chrome },
-  };
-
-  const resolvedImages = applyTemplateImages(body.images || [], effectiveConfig.images, body.templateImageOverrides);
+  const resolved = resolveTypesetRenderConfig(body);
+  const effectiveConfig = resolved.config;
+  const resolvedImages = resolved.images;
 
   // 插件在独立子进程渲染，字体必须在实际排版进程中校验并注册。
   if (effectiveConfig.typography.headingFont === ARTICLE_COVER_FONT.family || effectiveConfig.typography.bodyFont === ARTICLE_COVER_FONT.family) {
@@ -176,9 +89,9 @@ export function resolveTypesetResult(body: RenderRequestBody): {
   }
 
   return {
-    templateId: baseConfig.id,
-    templateName: baseConfig.name,
-    slot: resolvedSlot,
+    templateId: resolved.templateId,
+    templateName: resolved.templateName,
+    slot: resolved.slot,
     result,
   };
 }
