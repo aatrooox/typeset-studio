@@ -1,0 +1,119 @@
+{
+  "name": "贴图醒目蓝色-myno",
+  "slot": "newspic_cover",
+  "aspectRatio": "longform-3-4",
+  "algorithm": {
+    "baseFontSize": 55,
+    "scaleRatio": 1.32,
+    "lineHeightMultiplier": 1.32,
+    "obstacleGap": 24,
+    "targetFillRatio": 0.95,
+    "contentBottomGap": 0,
+    "textAlign": "left",
+    "verticalAlign": "center",
+    "safeArea": {
+      "top": 260,
+      "right": 88,
+      "bottom": 360,
+      "left": 78
+    }
+  },
+  "theme": {
+    "bgColor": "#2050EE",
+    "textColor": "#FFF2B3",
+    "headingColor": "#FFF2B3",
+    "accentColor": "#FFFFFF",
+    "quoteColor": "#FFF2B3",
+    "captionColor": "#A3B5FF",
+    "watermarkColor": "#A3B5FF",
+    "cardBg": "#1337C6",
+    "borderSubtle": "#4C70F0"
+  },
+  "typography": {
+    "headingFont": "Alimama ShuHeiTi",
+    "bodyFont": "MiSans"
+  },
+  "footerText": "",
+  "watermarkText": "收拾收拾",
+  "chrome": {
+    "showHeader": false,
+    "showWatermark": false,
+    "showPageNumber": false,
+    "showFooter": false,
+    "showFooterDivider": false,
+    "showFooterText": false,
+    "showFillRatio": false
+  },
+  "images": [
+    {
+      "id": "img_demo_1",
+      "src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
+      "alt": "抽象建筑线条",
+      "caption": "图 1：建筑结构中的空间秩序感",
+      "x": 16,
+      "y": 420,
+      "width": 420,
+      "height": 280,
+      "captionHeight": 40,
+      "layoutPreset": "mid-left"
+    },
+    {
+      "id": "cobalt_signal_identity",
+      "templateAssetKey": "cobalt_signal_identity",
+      "src": "https://img.nezus.cn/nezus/a41666a0-4588-493a-9ce5-3d34fcf5dd3f/typeset-studio/assets/20261016_5d1377d03372_da3d044899692fa31502dfda0fb7aa8a5671c070340f69f3ea1c1532929f4e94.png",
+      "alt": "底部折角装饰",
+      "caption": "",
+      "isAbsolute": true,
+      "x": -78,
+      "y": 676,
+      "width": 1080,
+      "height": 504,
+      "zIndex": 0,
+      "rotate": 0,
+      "opacity": 1,
+      "borderRadius": 0,
+      "layoutPreset": "custom",
+      "pageIndex": 1
+    },
+    {
+      "id": "cobalt_signal_header",
+      "templateAssetKey": "cobalt_signal_header",
+      "src": "https://img.nezus.cn/nezus/a41666a0-4588-493a-9ce5-3d34fcf5dd3f/typeset-studio/assets/20261016_08eb15f05bda_c548550c1e5fcea7ebbf3737b1a1a0619aecc15ad723e30c36ce1737e8aaea9c.png",
+      "alt": "顶部线条装饰",
+      "caption": "",
+      "isAbsolute": true,
+      "x": -78,
+      "y": -260,
+      "width": 1080,
+      "height": 200,
+      "zIndex": 0,
+      "rotate": 0,
+      "opacity": 1,
+      "borderRadius": 0,
+      "layoutPreset": "custom",
+      "pageIndex": 1
+    }
+  ],
+  "canvasStyle": {
+    "fill": {
+      "type": "solid",
+      "color": "#2050EE"
+    },
+    "pattern": {
+      "pattern": "none",
+      "color": "#A3B5FF",
+      "opacity": 0,
+      "size": 64
+    },
+    "border": {
+      "style": "none",
+      "color": "#FFF2B3",
+      "endColor": "#FF6A35",
+      "width": 2,
+      "inset": 0,
+      "radius": 0,
+      "opacity": 0
+    }
+  },
+  "id": "tpl_1792133180209_siu4w"
+}
