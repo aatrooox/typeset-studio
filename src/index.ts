@@ -52,3 +52,5 @@ export type {
   TypesetConfig,
   TypesetResult,
 } from "./core/types";
+
+export { validateTypesetTemplateConfig } from "./core/validate-config";

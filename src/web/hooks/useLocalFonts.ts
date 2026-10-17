@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { LocalFontInfo } from "../../core/font-loader";
 
-export function useLocalFonts() {
+export function useLocalFonts(enabled = true) {
   const [fonts, setFonts] = useState<LocalFontInfo[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -54,8 +54,8 @@ export function useLocalFonts() {
   }, []);
 
   useEffect(() => {
-    fetchAndRegisterFonts();
-  }, [fetchAndRegisterFonts]);
+    if (enabled) fetchAndRegisterFonts();
+  }, [enabled, fetchAndRegisterFonts]);
 
   return {
     fonts,

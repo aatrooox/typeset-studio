@@ -440,3 +440,17 @@ zzp render --state /absolute/path/workflow-state.json \
 模板只保存文件或 URL 引用，不嵌入、不自动打包迁移。`/uploads/...` 由实际渲染方的 `TYPESET_DATA_DIR` 解析，本地插件和编辑器应使用同一目录；远程模式使用服务端目录。模板中的绝对路径必须在渲染机器存在，HTTP URL 必须可访问。远程调用会传输任务替换中本地文件的字节，但不会复制原模板素材。缺失固定素材、未知替换标识或重复标识会明确报错，终止出图。
 
 固定素材和模板优先渲染从 `@akairos/typeset-studio@0.2.5` 起提供，Pipeline 0.19.0 固定依赖 0.2.6。正式 Pipeline 使用 npm 入口；本地源码入口仅用于联调。运行时模板和上传图片不打进 npm 包，应通过 Pipeline 的 `typeset-assets-sync` 打包，或自行同步目录与素材；说明见 [运行时配置指南](https://github.com/k7airos/zzhub-pipeline/blob/main/docs/visual-studio-and-config-sync.md)。
+
+### 宿主受控模板编辑器
+
+`@akairos/typeset-studio/editor` 另提供 `TypesetTemplateEditor`。宿主传入完整
+`config: TypesetConfig`、`onChange`、`fonts`（family/label）、`assets`
+（id/url/width/height）、`onUploadImage(file)` 和可选 `disabled`。控件包括原生
+排版、安全边距、主题、背景花纹、边框、页眉页脚、封面主题和图片图层；宿主
+负责当前文章预览、保存及用户权限。组件通过 ShadowRoot 隔离控件样式，不请求
+独立 Studio 的字体或管理员 API，也不包含第二份正文编辑器。
+
+素材配置使用 `asset:<UUID>`，编辑图片时由宿主提供 `assets[].url`。服务端在
+`@akairos/typeset-studio/server-config` 使用 `validateTypesetTemplateConfig`
+验证原生配置，再按素材归属解析实际字节。`BUILTIN_PRESETS` 同时从这两个入口
+导出；独立 Studio 的模板库和运行方式保持原有行为。

@@ -1,6 +1,6 @@
 {
   "name": "@akairos/typeset-studio",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Algorithmic typesetting studio & zzhub-pipeline image renderer plugin",
   "publishConfig": {
     "access": "public"
@@ -59,7 +59,7 @@
     "dev:server": "bun --watch src/server/index.ts",
     "dev:all": "bun --watch src/server/index.ts & vite",
     "build": "vite build && bun run build:lib",
-    "build:lib": "rm -rf dist/lib dist/editor dist/cover && bun build src/index.ts src/adapter.ts src/server-font.ts src/server-config.ts --outdir dist/lib --target node --splitting --external @napi-rs/canvas && bun build src/cover.ts --outdir dist/cover --target browser && bun build src/web/editor.ts --outdir dist/editor --target browser --production --external react --external react/jsx-runtime --external react/jsx-dev-runtime",
+    "build:lib": "bun run build:editor-css && rm -rf dist/lib dist/editor dist/cover && bun build src/index.ts src/adapter.ts src/server-font.ts src/server-config.ts --outdir dist/lib --target node --splitting --external @napi-rs/canvas && bun build src/cover.ts --outdir dist/cover --target browser && bun build src/web/editor.ts --outdir dist/editor --target browser --production --external react --external react/jsx-runtime --external react/jsx-dev-runtime --external react-dom",
     "build:watch": "vite build --watch",
     "preview": "vite preview",
     "server": "bun run src/server/index.ts",
@@ -67,7 +67,8 @@
     "start": "bun run src/server/index.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:editor-css": "bun x tailwindcss -c tailwind.editor.config.js -i src/web/editor-tailwind.css -o /tmp/typeset-editor-utilities.css --minify && cat /tmp/typeset-editor-utilities.css src/web/editor-base.css > src/web/editor.css"
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.8",

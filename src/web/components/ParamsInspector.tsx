@@ -22,6 +22,8 @@ import { CanvasStyleInspector } from "./CanvasStyleInspector";
 
 interface ParamsInspectorProps {
   config: TypesetConfig;
+  fonts?: Array<{ family: string; label: string }>;
+  hostControlled?: boolean;
   onUpdateAlgorithm: (partial: Partial<AlgorithmParams>) => void;
   onUpdateTheme: (partial: Partial<ThemeColors>) => void;
   onUpdateTypography: (partial: Partial<TypesetConfig["typography"]>) => void;
@@ -51,9 +53,13 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
   onUpdateBranding,
   onUpdateChrome,
   onUpdateCanvasStyle,
+  fonts,
+  hostControlled = false,
 }) => {
   const { algorithm, theme, typography } = config;
-  const { fonts: localFonts, loading: loadingFonts, refreshFonts } = useLocalFonts();
+  const { fonts: scannedFonts, loading: loadingFonts, refreshFonts } = useLocalFonts(!hostControlled);
+  const localFonts = fonts ?? scannedFonts;
+  const hasHostCoverTheme = hostControlled && Boolean(config.coverTheme);
 
   return (
     <aside className="w-80 border-l border-[#eaeaea] dark:border-[#222222] bg-white dark:bg-[#0a0a0a] flex flex-col shrink-0 select-none overflow-y-auto transition-colors">
@@ -138,7 +144,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
       </div>
 
       {/* Section 2: Fonts & Typeface */}
-      <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
+      {!hasHostCoverTheme && <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
         <div className="flex items-center justify-between text-xs font-semibold text-[#171717] dark:text-white mb-3">
           <div className="flex items-center gap-2">
             <Type className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
@@ -146,6 +152,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
           </div>
           <button
             onClick={() => refreshFonts()}
+            hidden={hostControlled}
             disabled={loadingFonts}
             title="重新扫描 public/fonts 目录"
             className="p-1 text-[#888888] hover:text-black dark:hover:text-white rounded hover:bg-[#eaeaea] dark:hover:bg-[#222222] transition-colors"
@@ -175,7 +182,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
                 </optgroup>
               )}
               <optgroup label="🌐 系统 / 云端预设">
-                {PRESET_FONT_OPTIONS.map((f) => (
+                {(hostControlled ? [] : PRESET_FONT_OPTIONS).map((f) => (
                   <option key={`head-preset-${f.value}`} value={f.value}>
                     {f.label}
                   </option>
@@ -204,7 +211,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
                 </optgroup>
               )}
               <optgroup label="🌐 系统 / 云端预设">
-                {PRESET_FONT_OPTIONS.map((f) => (
+                {(hostControlled ? [] : PRESET_FONT_OPTIONS).map((f) => (
                   <option key={`body-preset-${f.value}`} value={f.value}>
                     {f.label}
                   </option>
@@ -223,10 +230,10 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Section 3: Sizing & Algorithm Sliders */}
-      <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
+      {!hasHostCoverTheme && <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#171717] dark:text-white mb-3">
           <Sliders className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
           <span>字号与比例参数</span>
@@ -311,7 +318,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
             />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Section 4: Safe Area Insets */}
       <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
@@ -361,7 +368,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
       </div>
 
       {/* Section 5: Color Theme */}
-      <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
+      {!hasHostCoverTheme && <div className="p-3.5 border-b border-[#f0f0f0] dark:border-[#1c1c1c]">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#171717] dark:text-white mb-3">
           <Palette className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
           <span>视觉色彩主题</span>
@@ -492,7 +499,7 @@ export const ParamsInspector: React.FC<ParamsInspectorProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       <CanvasStyleInspector config={config} onChange={onUpdateCanvasStyle} />
 

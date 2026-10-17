@@ -10,3 +10,8 @@ import { resolveTypesetConfig } from "./server/config-resolver";
 export function resolveArticleCoverConfig(input: ImageRenderInput) {
   return resolveTypesetConfig(buildArticleCoverRequest(input));
 }
+
+export { BUILTIN_PRESETS } from "./core/presets";
+
+export { validateTypesetTemplateConfig } from "./core/validate-config";
+export { resolveHostTemplateConfig, updateHostTemplateConfig, changeHostTemplateSlot } from "./core/host-template";
